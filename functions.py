@@ -252,7 +252,7 @@ def update_whole_sales_data(force=False):
                            "p=" + str(page_counter) + "&ps=50&js=var%20doXCfrVg=%7Bpages:(tp),data:(x)%7D&" \
                             "filter=(Stype='EQA')(TDATE%3E=%5E" + start_date + "%5E%20and%20TDATE%3C=%5E" + today + \
                            "%5E)&rt=51576724"
-        wx.info(ws_eastmoney_url)
+        # wx.info(ws_eastmoney_url)
         daily_str = web_data.get_json_str(url=ws_eastmoney_url, web_flag='eastmoney')
         daily_str = re.sub(r'.*(?={pages)', r'', daily_str)  # 去掉 {pages 之前的字符串
         daily_str = re.sub(r'(pages)(.*)(data)', r'"\1"\2"\3"', daily_str)  # 给 pages data 加引号，变为合法的 json 串
