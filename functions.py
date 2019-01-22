@@ -231,7 +231,6 @@ def update_whole_sales_data(force=False):
     today = datetime.now().strftime('%Y-%m-%d')
 
     # select * from ws_201901 where  str_to_date(date, '%Y%m%d') < str_to_date('20180701', '%Y%m%d');
-
     page_counter = 1
 
     # 强制刷新 ws 表，删除所有历史数据，重新导入
@@ -240,7 +239,12 @@ def update_whole_sales_data(force=False):
         start_date = (date.today() + timedelta(days=-550)).strftime('%Y-%m-%d')
         wx.info("[update_whole_sales_date] Force to refresh  WS data {} rows REMOVED, ".format(rows))
         wx.info("[update_whole_sales_date] Collect history data last 550 days!!!")
-    else:  # 保持 ws表的数据，从最新日期+1 到 今天 ，获取web最新数据
+    else:
+        # 删除过期数据，超过 550天 的数据
+        del_rows = web_data.whole_sales_remove_expired_data()
+        wx.info("[update_whole_sales_data] {} Expired-date Rows Removed ".format(del_rows))
+
+        # 保持 ws表的数据，从最新日期+1 到 今天 ，获取web最新数据
         start_date = web_data.whole_sales_start_date()
         if start_date is None:
             wx.info("[update_whole_sales_data] Checking lastest date None")
@@ -252,25 +256,24 @@ def update_whole_sales_data(force=False):
                            "p=" + str(page_counter) + "&ps=50&js=var%20doXCfrVg=%7Bpages:(tp),data:(x)%7D&" \
                             "filter=(Stype='EQA')(TDATE%3E=%5E" + start_date + "%5E%20and%20TDATE%3C=%5E" + today + \
                            "%5E)&rt=51576724"
-        wx.info(ws_eastmoney_url)
+        # wx.info(ws_eastmoney_url)
         daily_str = web_data.get_json_str(url=ws_eastmoney_url, web_flag='eastmoney')
         daily_str = re.sub(r'.*(?={pages)', r'', daily_str)  # 去掉 {pages 之前的字符串
         daily_str = re.sub(r'(pages)(.*)(data)', r'"\1"\2"\3"', daily_str)  # 给 pages data 加引号，变为合法的 json 串
         ws_df = web_data.east_ws_json_parse(daily_str)  # 组装 Dataframe，准备导入数据库
-        wx.info("[Eastmoney_ws_data]Total Page:{}---{}, Start date: {}\n========================================"
-                .format(web_data.page_count, page_counter, start_date))
 
         if ws_df is None:
-            wx.info("[update_whole_sales_data] Page {} didn't acquire any data".format(page_counter))
+            wx.info("[update_whole_sales_data] Total Page {}, updated data NULL".format(web_data.page_count))
             break
         else:
+            wx.info("[Eastmoney_ws_data]Total Page:{}---{}, Start date: {}\n========================================"
+                    .format(web_data.page_count, page_counter, start_date))
             web_data.db_load_into_ws(ws_df=ws_df)
 
         if page_counter >= web_data.page_count:
             wx.info("Page : {} is the final page , End ".format(page_counter))
             break
         page_counter += 1
-    # wx.info(daily_str)
 
 
 @wx_timer
