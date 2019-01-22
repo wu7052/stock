@@ -12,7 +12,7 @@ from functions import *
 
 
 # 从上证、深证 网站更新 A 股基础信息
-update_sh_basic_info()
+# update_sh_basic_info()
 # update_sz_basic_info()
 
 # 从 eastmoney 获得大宗交易数据

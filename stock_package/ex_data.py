@@ -272,12 +272,13 @@ class ex_web_data(object):
             return None
 
     def whole_sales_remove_expired_data(self):
-        start_date = (date.today() + timedelta(days=-550)).strftime('%Y-%m-%d')
+        expire_date = (date.today() + timedelta(days=-550)).strftime('%Y%m%d')
 
         # select * from ws_201901 where str_to_date(date, '%Y%m%d') < str_to_date('20170906', '%Y%m%d');
         # sql = "select date from stock.ws_201901  where str_to_date(date,'%Y%m%d') " \
         #       "between str_to_date("+ start +",'%Y%m%d') and str_to_date(" + end+",'%Y%m%d'); "
-        sql = "delete from ws_201901 str_to_date(date,'%Y%m%d') < str_to_date("+start_date+", '%Y%m%d' )"
+        sql = "delete from ws_201901 where str_to_date(date,'%Y%m%d') < str_to_date("+expire_date+", '%Y%m%d' )"
+        # wx.info("[whole_sales_remove_expired_data]: {}".format(sql))
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
         return iCount
