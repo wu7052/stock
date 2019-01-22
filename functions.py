@@ -47,8 +47,8 @@ def update_sz_basic_info():
         # sz_data = sz_web_data()
         page_counter = 1
         while True:
-            sz_basic_list_url = "http://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1110&TABKEY=tab1&PAGENO=" \
-                                + str(page_counter) + "&random=0.6886288319449341"
+            sz_basic_list_url = "http://www.szse.cn/api/report/ShowReport/data?SHOWTYPE=JSON&CATALOGID=1110&" \
+                                "TABKEY=tab1&PAGENO=" + str(page_counter) + "&random=0.6886288319449341"
             json_str = sz_data.get_json_str(url=sz_basic_list_url, web_flag='sz_basic')
             pos = json_str.find('"error":null')  # 定位截取Json字符串的位置
             json_str = json_str[1:pos - 1] + '}'
@@ -84,8 +84,9 @@ def update_sh_basic_info():
         # 从Json读取 股票代码、名称、总股份、流动股份、上市日期
         page_counter = 1
         while True:
-            sh_basic_list_url = 'http://query.sse.com.cn/security/stock/getStockListData2.do?&jsonCallBack=jsonpCallback99887&' \
-                                'isPagination=true&stockCode=&csrcCode=&areaName=&stockType=1&pageHelp.cacheSize=1&pageHelp.beginPage=' \
+            sh_basic_list_url = 'http://query.sse.com.cn/security/stock/getStockListData2.do?&' \
+                                'jsonCallBack=jsonpCallback99887&isPagination=true&stockCode=&csrcCode=&areaName=&' \
+                                'stockType=1&pageHelp.cacheSize=1&pageHelp.beginPage=' \
                                 + str(page_counter) + '&pageHelp.pageSize=25&pageHelp.pageNo=' + str(page_counter) + \
                                 '&pageHelp.endPage=' + str(page_counter) + '1&_=1517320503161' + str(page_counter)
             json_str = sh_data.get_json_str(url=sh_basic_list_url, web_flag='sh_basic')
@@ -129,9 +130,9 @@ def update_daily_data_from_sina():
             while loop_flag:
                 wx.info("===" * 20)
                 wx.info("[update_daily_data_from_sina] downloading {} Page {} ".format(src[2], page_counter))
-                sina_daily_url = "http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?" \
-                                 "page=" + str(page_counter) + "&num=80&sort=symbol&asc=1&node=" + src[
-                                     0] + "&symbol=&_s_r_a=page"
+                sina_daily_url = "http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/" \
+                                 "Market_Center.getHQNodeData?page=" + str(page_counter) + "&num=80&sort=symbol&" \
+                                 "asc=1&node=" + src[0] + "&symbol=&_s_r_a=page"
 
                 daily_str = web_data.get_json_str(url=sina_daily_url, web_flag='sh_basic')
                 # daily_str = daily_str[1:-1]
@@ -151,7 +152,7 @@ def update_daily_data_from_sina():
                         loop_flag = False  # 完成本次后，退出循环
 
                 # key字段 加引号，整理字符串
-                jstr = re.sub(r'([a-z|A-Z]+)(?=\:)', r'"\1"', daily_str)
+                jstr = re.sub(r'([a-z|A-Z]+)(?=:)', r'"\1"', daily_str)
 
                 # 按股票拆分 成list， 这里把整个页面的股票数据统一处理成 dataframe，不做拆分了
                 # d_arr = re.findall('{\S+?}',jstr)
@@ -234,7 +235,7 @@ def update_whole_sales_data(force=False):
     page_counter = 1
 
     # 强制刷新 ws 表，删除所有历史数据，重新导入
-    if force == True:
+    if force:  #== True:
         rows = web_data.whole_sales_data_remove()
         start_date = (date.today() + timedelta(days=-550)).strftime('%Y-%m-%d')
         wx.info("[update_whole_sales_date] Force to refresh  WS data {} rows REMOVED, ".format(rows))
@@ -276,6 +277,7 @@ def update_whole_sales_data(force=False):
         page_counter += 1
 
 
+# 分析统计WS表中所有的交易记录，更新一遍 ws_share_holder 表
 @wx_timer
 def update_ws_share_holder():
     wx = lg.get_handle()
@@ -290,8 +292,8 @@ def update_ws_share_holder():
             wx.info("{} failed to gather Share Holders' Information".format(stock_id[0]))
             continue
         else:
+            web_data.db_load_into_ws_share_holder(df_share_holder = df_share_holder )
             wx.info("{}/{} : {} Loaded Share Holders' Information".format(iCounter, len(arr_id), stock_id[0]))
-
 
 
 """

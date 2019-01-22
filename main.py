@@ -19,7 +19,7 @@ from functions import *
 # 先检查数据库中大宗交易的最新日期，
 # 截止时间 是今天
 update_whole_sales_data(force=False)
-
+update_ws_share_holder()
 
 # 从sina获得实时的交易数据
 # update_daily_data_from_sina()
