@@ -12,19 +12,15 @@ from functions import *
 
 
 # 从上证、深证 网站更新 A 股基础信息
-update_sh_basic_info()
+# update_sh_basic_info()
 # update_sz_basic_info()
 
 # 从 eastmoney 获得大宗交易数据
 # 先检查数据库中大宗交易的最新日期，
 # 截止时间 是今天
-<<<<<<< HEAD
 # update_whole_sales_data(force=False)
-update_ws_share_holder()
-=======
-update_whole_sales_data(force=False)
+# update_ws_share_holder()
 
->>>>>>> dev
 
 # 从sina获得实时的交易数据
 # update_daily_data_from_sina()
