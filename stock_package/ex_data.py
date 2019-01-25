@@ -66,15 +66,6 @@ class ex_web_data(object):
         self.db.handle.commit()
         # wx.info(dd_array)
 
-    def db_call_procedure(self, p_name, *args):
-        wx = lg.get_handle()
-        # wx.info("[{}] parameter ==> values {},{},{},{},{},{},{}".format(p_name, args[0], args[1], args[2],
-        #                                                                 args[3], args[4],args[5], args[6]))
-        self.db.cursor.callproc(p_name, (args[0], args[1], args[2], args[3], args[4], args[5], args[6]))
-        self.db.cursor.execute(
-            "select @_" + p_name + "_0, @_" + p_name + "_1, @_" + p_name + "_2, @_" + p_name + "_3, @_" + p_name + "_4, @_" + p_name + "_5, @_" + p_name + "_6")
-        result = self.db.cursor.fetchall()
-        wx.info(result)
 
     def db_load_into_list_a_2(self, basic_info_df):
         wx = lg.get_handle()
@@ -354,6 +345,16 @@ class ex_web_data(object):
             columns=['id','h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
 
         return df_share_holder
+
+    def whole_sales_supplement_info(self):
+        wx = lg.get_handle()
+        try:
+            self.db.cursor.callproc("ws_supplement")
+            self.db.handle.commit()
+        except Exception as e:
+            wx.info("[whole_sales_supplement_info] Err : {}".format(e))
+            return False
+        return True
 """
         sql = "select distinct b_code from ws_201901 where id = %s order by date asc"
         self.db.cursor.execute(sql, (s_id))

@@ -2,6 +2,7 @@
 # from filePackage import MyFile
 from db_package import db_ops
 from stock_package import ts_data, sz_web_data, sh_web_data, ex_web_data
+from report_package import ws_rp
 import sys
 import os
 import pandas as pd
@@ -219,12 +220,6 @@ def update_daily_data_from_ts(period=-1):
         pass
 
 
-def get_list_a_total_amount():
-    # wx = lg.get_handle()
-    db_data = ex_web_data()
-    db_data.db_call_procedure("list_a_total_amount", '20190108', 1, 2, 3, 4, 5, 6)
-
-
 @wx_timer
 def update_whole_sales_data(force=False):
     wx = lg.get_handle()
@@ -294,7 +289,22 @@ def update_ws_share_holder():
         else:
             web_data.db_load_into_ws_share_holder(df_share_holder = df_share_holder )
             wx.info("{}/{} : {} Loaded Share Holders' Information".format(iCounter, len(arr_id), stock_id[0]))
+    wx.info("update_ws_share_holder loaded completed ! ")
 
+def ws_supplement():
+    wx = lg.get_handle()
+    web_data = ex_web_data()
+    wx.info("Start to supplement more information ")
+    # 调用 mysql 存储过程，在 ws表中 补充 stock_name , h_name, buy_date, sell_date
+    if (web_data.whole_sales_supplement_info()):
+        wx.info("update_ws_share_holder succeed !")
+    else:
+        wx.info("update_ws_share_holder failed !")
+
+def report_total_amount():
+    wx = lg.get_handle()
+    rp = ws_rp()
+    rp.get_list_a_total_amount()
 
 """
 # stock = ts_data()

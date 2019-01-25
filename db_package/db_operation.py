@@ -26,6 +26,9 @@ class db_ops:
             wx.info("Err occured in DB_OP __init__{}".format(e))
             raise e
 
+
+
+
     def __del__(self):
         wx = lg.get_handle()
         wx.info("db_ops : {}: __del__ called".format(self))
