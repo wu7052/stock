@@ -291,6 +291,7 @@ def update_ws_share_holder():
             wx.info("{}/{} : {} Loaded Share Holders' Information".format(iCounter, len(arr_id), stock_id[0]))
     wx.info("update_ws_share_holder loaded completed ! ")
 
+@wx_timer
 def ws_supplement():
     wx = lg.get_handle()
     web_data = ex_web_data()
@@ -301,6 +302,7 @@ def ws_supplement():
     else:
         wx.info("update_ws_share_holder failed !")
 
+@wx_timer
 def report_total_amount():
     wx = lg.get_handle()
     rp = ws_rp()
