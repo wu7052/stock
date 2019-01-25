@@ -234,7 +234,7 @@ class ex_web_data(object):
     def db_load_into_ws(self, ws_df=None):
         wx = lg.get_handle()
         if ws_df is None:
-            wx.info("Err: whole sales dataframe is Empty,")
+            wx.info("[db_load_into_ws]Err: ws flow dataframe is Empty,")
             return -1
         ws_array = ws_df.values.tolist()
         i = 0
@@ -245,6 +245,23 @@ class ex_web_data(object):
               "amount=%s, b_code=%s, s_code=%s, close_price=%s, pct_chg=%s, b_name=%s, s_name=%s"
         self.db.cursor.executemany(sql, ws_array)
         self.db.handle.commit()
+
+    def db_load_into_ws_share_holder(self, df_share_holder = None):
+        wx = lg.get_handle()
+        if df_share_holder is None:
+            wx.info("[db_load_into_ws_share_holder]Err: ws share holder dataframe is Empty,")
+            return -1
+        ws_sh_array = df_share_holder.values.tolist()
+        i = 0
+        while i < len(ws_sh_array):
+            ws_sh_array[i] = tuple(ws_sh_array[i])
+            i += 1
+
+        sql = "REPLACE INTO STOCK.ws_share_holder SET id=%s, h_code=%s, b_vol=%s, b_price=%s, b_vol_tf=%s, s_vol=%s, " \
+              "s_price=%s, s_vol_tf=%s"
+        self.db.cursor.executemany(sql, ws_sh_array)
+        self.db.handle.commit()
+
 
     def whole_sales_stock_id(self):
         sql = "select distinct id from ws_201901"
@@ -304,15 +321,14 @@ class ex_web_data(object):
         buyer_price = buyer_amount / buyer_vol
 
         df_buyer = pd.concat([buyer_vol, buyer_price, buyer_vol_tf], axis=1)
-        df_buyer['id'] = s_id
+        # df_buyer['id'] = s_id
         df_buyer['s_vol'] = 0
         df_buyer['s_price'] = 0
         df_buyer['s_vol_tf'] = 0
         df_buyer = df_buyer.reset_index()
-        # df_buyer_cols = ['','','','','','','']
-        df_buyer.columns = ['h_code', 'b_vol', 'b_price', 'b_vol_tf', 'id', 's_vol', 's_price', 's_vol_tf']
+        df_buyer.columns = ['h_code', 'b_vol', 'b_price', 'b_vol_tf',  's_vol', 's_price', 's_vol_tf']
         df_buyer = df_buyer.reindex(
-            columns=['id', 'h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
+            columns=['h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
 
         # 卖方信息归集整理成 Dataframe
         seller_vol = df_ws_flow['vol'].groupby(df_ws_flow['s_code']).sum()
@@ -320,19 +336,22 @@ class ex_web_data(object):
         seller_amount = df_ws_flow['amount'].groupby(df_ws_flow['s_code']).sum()
         seller_price = seller_amount / seller_vol
         df_seller = pd.concat([seller_vol, seller_price, seller_vol_tf], axis=1)
-        df_seller['id'] = s_id
+        # df_seller['id'] = s_id
         df_seller['b_vol'] = 0
         df_seller['b_price'] = 0
         df_seller['b_vol_tf'] = 0
         df_seller = df_seller.reset_index()
-        df_seller.columns = ['h_code', 's_vol', 's_price', 's_vol_tf', 'id', 'b_vol', 'b_price', 'b_vol_tf']
+        df_seller.columns = ['h_code', 's_vol', 's_price', 's_vol_tf',  'b_vol', 'b_price', 'b_vol_tf']
         df_seller = df_seller.reindex(
-            columns=['id', 'h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
+            columns=['h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
 
         # 买方、卖方 Dataframe 合并成一个 Dataframe
         df_share_holder = pd.concat([df_buyer, df_seller], axis=0, join='outer')
         df_share_holder = df_share_holder.groupby('h_code').sum()  #  合并 h_code相同 的 买家 、卖家 数据
         df_share_holder = df_share_holder.reset_index() # 重新整理成一个 Dataframe
+        df_share_holder['id'] = s_id
+        df_share_holder = df_share_holder.reindex(
+            columns=['id','h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
 
         return df_share_holder
 """

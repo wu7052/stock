@@ -23,7 +23,7 @@ from functions import *
 
 
 # 从sina获得实时的交易数据
-# update_daily_data_from_sina()
+update_daily_data_from_sina()
 
 # 调用mysql 存储过程获得 A 股市值
 #get_list_a_total_amount()
