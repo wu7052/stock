@@ -114,6 +114,59 @@ def update_sh_basic_info():
         pass
 
 
+def _df_sw_code_level(code):
+    str_code =  str(code)
+    if re.match(r'\d{2}0{4}$',str_code):  # level ONE
+        return 1
+    elif re.match(r'\d{3}[1-9]0{2}$',str_code):  # level 2
+        return 2
+    elif re.match(r'\d{5}[1-9]$',str_code): #level 3
+        return 3
+    elif re.match(r'\d{4}[1-9]0$',str_code): #level 3
+        return 3
+    else:
+        return 0
+
+
+@wx_timer
+def update_sw_industry_code():
+    # wx = lg.get_handle()
+    web_data = ex_web_data()
+    df_sw_code = pd.read_excel("D:\JetBrains\stock_analyzer\sw_industry_code.xlsx")
+    df_sw_code['level'] = df_sw_code.apply(lambda x: _df_sw_code_level(x.industry_code), axis=1)
+    web_data.db_load_into_sw_industry(df_sw_code)
+    # df_sw_code.to_excel("D:\JetBrains\stock_analyzer\sw_industry_code_level.xlsx", encoding='utf-8', index=True, header=True)
+
+
+@wx_timer
+def update_sw_industry_into_basic_info():
+    wx = lg.get_handle()
+    web_data = ex_web_data()
+    sw_industry_arr = web_data.db_get_sw_industry_code(level = 2)
+    code_counter = 1
+    for code in sw_industry_arr:
+        page_counter = 1
+        while True:
+            sina_industry_url = "http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/" \
+                                "Market_Center.getHQNodeData?page=" +str(page_counter) + "&num=80&sort=symbol&asc=1&" \
+                                "node=sw2_" +str(code[0])+ "&symbol=&_s_r_a=setlen"
+            stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
+            time.sleep(1)
+            if stock_id_json == 'null':
+                # wx.info("SW Industry Code{} page {} Null".format(code[0], page_counter))
+                break
+            else:
+                wx.info("SW Industry {}:{}  Code:{}  Page:{} loaded into basic info table".
+                        format(code_counter, len(sw_industry_arr), code[0], page_counter))
+
+            # key字段 加引号，整理字符串
+            stock_id_json = re.sub(r'([a-z|A-Z]+)(?=:)', r'"\1"', stock_id_json)
+            stock_id_arr = web_data.sina_industry_json_parse(stock_id_json)
+            web_data.db_update_sw_industry_into_basic_info(code = code[0], id_arr = stock_id_arr)
+            page_counter +=1
+        code_counter += 1
+
+
 @wx_timer
 def update_daily_data_from_sina():
     wx = lg.get_handle()
@@ -238,7 +291,7 @@ def update_whole_sales_data(force=False):
     else:
         # 删除过期数据，超过 550天 的数据
         del_rows = web_data.whole_sales_remove_expired_data()
-        wx.info("[update_whole_sales_data] {} Expired-date Rows Removed ".format(del_rows))
+        wx.info("[update_whole_sales_data] {} Rows of Expired data Removed ".format(del_rows))
 
         # 保持 ws表的数据，从最新日期+1 到 今天 ，获取web最新数据
         start_date = web_data.whole_sales_start_date()
@@ -304,9 +357,16 @@ def ws_supplement():
 
 @wx_timer
 def report_total_amount():
-    wx = lg.get_handle()
+    # wx = lg.get_handle()
     rp = ws_rp()
-    rp.get_list_a_total_amount()
+    rp.calc_total_amount()
+
+@wx_timer
+def report_days_vol(days = 0, type = None):
+    # wx = lg.get_handle()
+    rp = ws_rp()
+    df_days_vol = rp.calc_days_vol(days, type)
+    return df_days_vol
 
 """
 # stock = ts_data()

@@ -9,19 +9,25 @@ wx = lg.get_handle()
 
 from functions import *
 
+# 申银万国行业代码导入，一次性初始化即可
+# update_sw_industry_code()
+
+
 # 报表输出功能
 # report_total_amount()
+# report_days_vol(days=7, type="00")
 
 # 从上证、深证 网站更新 A 股基础信息
 # update_sh_basic_info()
 # update_sz_basic_info()
-#
+update_sw_industry_into_basic_info()
+
 # 从 eastmoney 获得大宗交易数据
 # 先检查数据库中大宗交易的最新日期，
 # 截止时间 是今天
 # update_whole_sales_data(force=False)
 # update_ws_share_holder()
-ws_supplement()
+
 
 # 从sina获得实时的交易数据
 # update_daily_data_from_sina()
@@ -31,3 +37,6 @@ ws_supplement()
 
 # 从tushare 获取前一天的 交易数据
 # update_daily_data_from_ts(period = -1)
+
+
+# ws_supplement()

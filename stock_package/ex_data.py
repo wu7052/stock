@@ -50,21 +50,44 @@ class ex_web_data(object):
         id_array = self.db.cursor.fetchmany(id)
         return id_array
 
-    def db_load_into_daily_data(self, dd_df=None, t_name=None):
+    def db_load_into_sw_industry(self, df_sw_industry = None):
         wx = lg.get_handle()
-        if dd_df is None or t_name is None:
-            wx.info("Err: Daily Data Frame or Table Name is Empty,")
+        if df_sw_industry is None :
+            wx.info("[db_load_into_sw_industry] Err: SW DataFrame is Empty,")
             return -1
-        dd_array = dd_df.values.tolist()
+        sw_industry_arr = df_sw_industry.values.tolist()
         i = 0
-        while i < len(dd_array):
-            dd_array[i] = tuple(dd_array[i])
+        while i < len(sw_industry_arr):
+            sw_industry_arr[i] = tuple(sw_industry_arr[i])
             i += 1
-        sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, open=%s, high=%s, low=%s, " \
-                                         "close=%s, pre_close=%s, chg=%s,  pct_chg=%s,vol=%s, amount=%s"
-        self.db.cursor.executemany(sql, dd_array)
+        sql = "REPLACE INTO sw_industry_code SET industry_code=%s, industry_name=%s, indicator_code=%s, level=%s"
+        self.db.cursor.executemany(sql, sw_industry_arr)
         self.db.handle.commit()
-        # wx.info(dd_array)
+
+    def db_get_sw_industry_code(self, level = 2):
+        wx = lg.get_handle()
+        # 取第二级行业代码
+        sql = "select industry_code from sw_industry_code where level = " + str(level)
+        iCount = self.db.cursor.execute(sql)
+        if iCount > 0:
+            industry_code_arr =  self.db.cursor.fetchall()
+            return industry_code_arr
+        else:
+            return -1
+
+    def db_update_sw_industry_into_basic_info(self, code=None, id_arr=None):
+        wx = lg.get_handle()
+        if code is None or id_arr is None:
+            wx.info(" Code {} or id_arr {} is None".format(code, id_arr))
+            return  -1
+        sw_level_1 = code[0:2]+'0000'
+        sw_level_2 = code
+
+        for s_id in id_arr:
+            sql = "update list_a set sw_level_1=%s , sw_level_2=%s where id = %s"%(sw_level_1, sw_level_2, s_id)
+            self.db.cursor.execute(sql)
+            self.db.handle.commit()
+        wx.info("SW Industry Code {} updated {} stocks ".format(code, len(id_arr)))
 
 
     def db_load_into_list_a_2(self, basic_info_df):
@@ -184,6 +207,32 @@ class ex_web_data(object):
         else:
             # self.logger.wt.info("json string is Null , exit ...\n")
             return None
+
+
+    def sina_industry_json_parse(self, json_str = None):
+        if json_str is None:
+            return -1
+        json_obj = json.loads(json_str)
+        stock_id_arr = jsonpath(json_obj, '$..code')
+        return stock_id_arr
+
+
+    def db_load_into_daily_data(self, dd_df=None, t_name=None):
+        wx = lg.get_handle()
+        if dd_df is None or t_name is None:
+            wx.info("Err: Daily Data Frame or Table Name is Empty,")
+            return -1
+        dd_array = dd_df.values.tolist()
+        i = 0
+        while i < len(dd_array):
+            dd_array[i] = tuple(dd_array[i])
+            i += 1
+        sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, open=%s, high=%s, low=%s, " \
+                                         "close=%s, pre_close=%s, chg=%s,  pct_chg=%s,vol=%s, amount=%s"
+        self.db.cursor.executemany(sql, dd_array)
+        self.db.handle.commit()
+        # wx.info(dd_array)
+
 
     def east_ws_json_parse(self, json_str=None):
         if json_str is not None:
@@ -355,6 +404,7 @@ class ex_web_data(object):
             wx.info("[whole_sales_supplement_info] Err : {}".format(e))
             return False
         return True
+
 """
         sql = "select distinct b_code from ws_201901 where id = %s order by date asc"
         self.db.cursor.execute(sql, (s_id))
