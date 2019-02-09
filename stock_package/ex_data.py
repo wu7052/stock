@@ -217,7 +217,7 @@ class ex_web_data(object):
         return stock_id_arr
 
 
-    def db_load_into_daily_data(self, dd_df=None, t_name=None):
+    def db_load_into_daily_data(self, dd_df=None, t_name=None, mode='basic'):
         wx = lg.get_handle()
         if dd_df is None or t_name is None:
             wx.info("Err: Daily Data Frame or Table Name is Empty,")
@@ -227,8 +227,17 @@ class ex_web_data(object):
         while i < len(dd_array):
             dd_array[i] = tuple(dd_array[i])
             i += 1
-        sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, open=%s, high=%s, low=%s, " \
-                                         "close=%s, pre_close=%s, chg=%s,  pct_chg=%s,vol=%s, amount=%s"
+        if mode == 'full':
+            sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, open=%s, high=%s, low=%s, " \
+                                            "close=%s, pre_close=%s, chg=%s,  pct_chg=%s,vol=%s, amount=%s, " \
+                                             "qrr=%s, tor=%s, pct_up_down=%s, pe=%s, pb=%s"
+        elif mode == 'basic':
+            sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, open=%s, high=%s, low=%s, " \
+                                             "close=%s, pre_close=%s, chg=%s,  pct_chg=%s,vol=%s, amount=%s"
+        else:
+            sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, open=%s, high=%s, low=%s, " \
+                                             "close=%s, pre_close=%s, chg=%s,  pct_chg=%s,vol=%s, amount=%s"
+
         self.db.cursor.executemany(sql, dd_array)
         self.db.handle.commit()
         # wx.info(dd_array)

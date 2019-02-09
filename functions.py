@@ -128,6 +128,7 @@ def _df_sw_code_level(code):
         return 0
 
 
+# 一次性调用，初始化数据表
 @wx_timer
 def update_sw_industry_code():
     # wx = lg.get_handle()
@@ -168,7 +169,7 @@ def update_sw_industry_into_basic_info():
 
 
 @wx_timer
-def update_daily_data_from_sina():
+def update_daily_data_from_sina(date = None):  # date 把数据更新到指定日期，默认是当天
     wx = lg.get_handle()
     # sz_data = sz_web_data()
     # sh_data = sh_web_data()
@@ -210,7 +211,10 @@ def update_daily_data_from_sina():
 
                 # 按股票拆分 成list， 这里把整个页面的股票数据统一处理成 dataframe，不做拆分了
                 # d_arr = re.findall('{\S+?}',jstr)
-                today = datetime.now().strftime('%Y%m%d')
+                if date is None:
+                    today = datetime.now().strftime('%Y%m%d')
+                else:
+                    today = date
 
                 # 深证 A 股页面 包含了 主板、创业、中小， 所以处理 深证主板的时候，要把 创业、中小 的股票信息去掉
                 daily_data_frame = web_data.sina_daily_data_json_parse(json_str=jstr, date=today)
@@ -271,6 +275,86 @@ def update_daily_data_from_ts(period=-1):
         wx.info("Err:[update_daily_data_from_ts]---{}".format(e))
     finally:
         pass
+
+@wx_timer
+def update_daily_data_from_eastmoney(date=None, supplement = True):
+    wx = lg.get_handle()
+    web_data =  ex_web_data()
+    page_src = ( ('C._SZAME', 'stock.code_00_201901', '深证 主板'), ('C.13', 'stock.code_002_201901', '中小板'),
+                 ('C.80', 'stock.code_30_201901', '创业板'), ('C.2', 'stock.code_60_201901', '上证 主板'))
+
+    try:
+        for src in page_src:
+            page_count = 1
+            items_page = 100
+            loop_page = True
+            while loop_page:
+                east_daily_url = "http://nufm.dfcfw.com/EM_Finance2014NumericApplication/JS.aspx?cb=" \
+                                 "jQuery1124048605539191859704_1549549980465&type=CT&" \
+                                 "token=4f1862fc3b5e77c150a2b985b12db0fd&sty=FCOIATC&" \
+                                 "js=(%7Bdata%3A%5B(x)%5D%2CrecordsFiltered%3A(tot)%7D)&" \
+                                 "cmd="+src[0]+"&st=(Code)&sr=1&p="+str(page_count)+"&ps="+str(items_page)+\
+                                 "&_=1549549980528"
+
+                east_daily_str = web_data.get_json_str(url=east_daily_url, web_flag='eastmoney')
+
+                # 把字符串 拆分成 交易数据",,,,,",",,,,,",",,,,",",,,,,"  和 记录数量 两个部分
+                east_daily_str = re.search(r'(?:data\:\[)(.*)(?:\]\D+)(\d+)(?:.*)',east_daily_str)
+                daily_data = east_daily_str.group(1)  # 获得交易数据
+                total_item = int(east_daily_str.group(2))  # 获得股票总数量，用来计算 页数
+                total_page = int((total_item+items_page-1) / items_page)  # 总页数，向上取整
+                wx.info("[update daily data from eastmoney] {}-- page {}/ {}".format(src[2], page_count, total_page))
+                page_count += 1
+                if page_count > total_page:
+                    loop_page = False
+
+                # 把交易数据 进一步拆分成 每支股票交易数据一条字符串 的数组
+                east_daily_data = re.findall(r'(?:\")(.*?)(?:\")', daily_data)
+                page_arr = list()
+                for daily_str in east_daily_data:
+                    daily_arr = daily_str.split(',')
+                    daily_arr.pop(0) # 去掉 无意义的 第一个字段
+                    if src[0] == 'C._SZAME' and re.match(r'^002',daily_arr[0]) is not None: # 深圳主板发现 中小板
+                        loop_page = False
+                        break
+                    else:
+                        page_arr.append(daily_arr)
+                        # wx.info("{}".format(daily_arr[0]))
+                page_full_df = pd.DataFrame(page_arr, columns=['id','name','close','chg','pct_chg','vol','amount','pct_up_down',
+                                                          'high','low','open','pre_close','unknown1','qrr','tor','pe','pb',
+                                                          'total_amount','total_flow_amount','unknown4','unknown5',
+                                                          'unknown6',"unknown7", "date","unknown8"])
+                if date is None:
+                    page_full_df['date'] = datetime.now().strftime('%Y%m%d')
+                else:
+                    page_full_df['date'] = date
+
+                if supplement :  # 只采集增补信息
+                    page_db_df = page_full_df.loc[:,['id', 'date', 'qrr', 'tor', 'pct_up_down', 'pe', 'pb']]
+                else: # 采集全部数据
+                    page_db_df =  page_full_df.loc[:,['id', 'date', 'open', 'high', 'low', 'close', 'pre_close', 'chg',
+                                             'pct_chg', 'vol', 'amount', 'qrr', 'tor', 'pct_up_down', 'pe', 'pb']]
+                    page_db_df['open'] = page_db_df['open'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['high'] = page_db_df['high'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['low'] = page_db_df['low'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['close'] = page_db_df['close'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pre_close'] = page_db_df['pre_close'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['chg'] = page_db_df['chg'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pct_chg'] = page_db_df['pct_chg'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['vol'] = page_db_df['vol'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['amount'] = page_db_df['amount'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['qrr'] = page_db_df['qrr'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['tor'] = page_db_df['tor'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pct_up_down'] = page_db_df['pct_up_down'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pe'] = page_db_df['pe'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pb'] = page_db_df['pb'].apply(lambda x: '0' if str(x) == '-' else x)
+
+                    page_db_df['amount'] = pd.to_numeric(page_db_df['amount'])
+                    page_db_df['amount'] = page_db_df['amount']/1000
+                    web_data.db_load_into_daily_data(dd_df=page_db_df, t_name=src[1], mode='full')
+
+    except Exception as e:
+        wx.info("Err [update_daily_data_from_eastmoney]: {}".format(e))
 
 
 @wx_timer
