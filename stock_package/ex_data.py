@@ -217,10 +217,29 @@ class ex_web_data(object):
         return stock_id_arr
 
 
+    def db_load_into_dgj_trade(self, dd_df=None, t_name = 'dgj_201901'):
+        wx = lg.get_handle()
+        if dd_df is None :
+            wx.info("[db_load_into_dgj_trade] Err: Daily Data Frame Empty,")
+            return -1
+        dd_array = dd_df.values.tolist()
+        i = 0
+        while i < len(dd_array):
+            dd_array[i] = tuple(dd_array[i])
+            i += 1
+
+        sql = "REPLACE INTO " +t_name+ " SET date=%s, id=%s, dgj_name=%s, dgj_pos=%s, trader_name=%s, " \
+                                       "relation=%s, vol=%s, price=%s, amount=%s, pct_chg=%s, " \
+                                       "trading_type=%s, in_hand=%s"
+        self.db.cursor.executemany(sql, dd_array)
+        self.db.handle.commit()
+
+
+
     def db_load_into_daily_data(self, dd_df=None, t_name=None, mode='basic'):
         wx = lg.get_handle()
         if dd_df is None or t_name is None:
-            wx.info("Err: Daily Data Frame or Table Name is Empty,")
+            wx.info("[db_load_into_daily_data] Err: Daily Data Frame or Table Name is Empty,")
             return -1
         dd_array = dd_df.values.tolist()
         i = 0
@@ -269,15 +288,6 @@ class ex_web_data(object):
         df1 = df.T
         df1.rename(columns={0: 'Date', 1: 'ID', 2: 'Disc', 3: 'Price', 4: 'Vol', 5: 'Vol_tf', 6: 'Amount', 7: 'B_code',
                             8: 'S_code', 9: 'Close_price', 10: 'Pct_chg', 11: 'B_name', 12: 'S_name'}, inplace=True)
-
-        # irow = 0
-        # while irow < len(df1['Date'].values.tolist()):
-        #     date_str = df1['Date'][irow]
-        #     date_str = date_str[:10]
-        #     date_str = re.sub('-', '', date_str)
-        #     df1['Date'][irow] = date_str
-        #     irow += 1
-
         return df1
 
     def db_load_into_ws(self, ws_df=None):
@@ -350,12 +360,13 @@ class ex_web_data(object):
         return iCount
 
     def whole_sales_analysis(self, s_id=None):
-        wx = lg.get_handle()
+        # wx = lg.get_handle()
         if s_id is None:
             return -1
 
         # 查询该股票所有的大宗交易流水，输出成 Dataframe 格式
-        sql = "select b_code, b_name, s_code, s_name, vol, vol_tf, price, amount from ws_201901 where id = %s order by date asc"
+        sql = "select b_code, b_name, s_code, s_name, vol, vol_tf, price, amount from ws_201901 " \
+              "where id = %s order by date asc"
         self.db.cursor.execute(sql, (s_id))
         self.db.handle.commit()
         ws_flow = self.db.cursor.fetchall()
@@ -413,6 +424,45 @@ class ex_web_data(object):
             wx.info("[whole_sales_supplement_info] Err : {}".format(e))
             return False
         return True
+
+
+    def whole_sales_data_remove(self):
+        sql = "delete from ws_201901 "
+        iCount = self.db.cursor.execute(sql)  # 返回值
+        self.db.handle.commit()
+        return iCount
+
+
+    def dgj_trading_data_remove(self):
+        sql = "delete from dgj_201901"
+        iCount = self.db.cursor.execute(sql)  # 返回值
+        self.db.handle.commit()
+        return iCount
+
+
+    def dgj_remove_expired_data(self):
+        expire_date = (date.today() + timedelta(days=-550)).strftime('%Y%m%d')
+        sql = "delete from dgj_201901 where str_to_date(date,'%Y%m%d') < str_to_date(" + expire_date + ", '%Y%m%d' )"
+        # wx.info("[whole_sales_remove_expired_data]: {}".format(sql))
+        iCount = self.db.cursor.execute(sql)  # 返回值
+        self.db.handle.commit()
+        return iCount
+
+    def dgj_start_date(self):
+        sql = "select date from dgj_201901 as dgj order by dgj.date desc limit 1"
+
+        iCount = self.db.cursor.execute(sql)  # 返回值
+        self.db.handle.commit()
+        if iCount == 1:
+            result = self.db.cursor.fetchone()
+            record_date = datetime.strptime(result[0], "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
+            start_date = record_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期+1天
+            return start_date
+        else:
+            return None
+
+
+
 
 """
         sql = "select distinct b_code from ws_201901 where id = %s order by date asc"

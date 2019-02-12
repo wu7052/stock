@@ -49,7 +49,15 @@ from functions import *
 # 从eastmoney 获得实时交易数据 + 增补信息（换手率、量比、振幅、市盈率、市净率）
 # supplement = True 表示只添加 增补信息 到数据表， = False 表示所有信息添加到数据表
 """
-update_daily_data_from_eastmoney(date= '20190202',supplement=False)
+# update_daily_data_from_eastmoney(date= '20190202',supplement=False)
+# 常用功能，从 eastmoney 获得全部的 日交易数据
+update_daily_data_from_eastmoney(supplement=False)
+
+
+"""
+# 从 eastmoney 获得 董高监 的交易数据（日期、股票、成交人、价格、数量、董高监、关系）
+"""
+update_dgj_trading_data(force= False)
 
 
 """
