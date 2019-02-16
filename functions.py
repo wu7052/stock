@@ -1,10 +1,10 @@
 # from logger_package import myLogger
 # from filePackage import MyFile
-from db_package import db_ops
+# from db_package import db_ops
 from stock_package import ts_data, sz_web_data, sh_web_data, ex_web_data
-from report_package import ws_rp
-import sys
-import os
+# from report_package import ws_rp
+# import sys
+# import os
 import pandas as pd
 from datetime import datetime, date, timedelta
 import time
@@ -364,7 +364,7 @@ def update_daily_data_from_eastmoney(date=None, supplement=True):
 
 
 @wx_timer
-def update_dgj_trading_data(force=False):
+def update_dgj_trading_data_from_eastmoney(force=False):
     wx = lg.get_handle()
     web_data = ex_web_data()
     # today = datetime.now().strftime('%Y-%m-%d')
@@ -381,7 +381,7 @@ def update_dgj_trading_data(force=False):
         del_rows = web_data.dgj_remove_expired_data()
         wx.info("[update_dgj_trading_data] {} Rows of Expired data Removed ".format(del_rows))
 
-        # 保持 dgj 表的数据，获得 dgj 交易记录的最新日期
+        # 保持 dgj 表的数据，删除最近一天的数据，把开始时间设为 前一天，因为最近一天的数据可能还有新增
         start_date = web_data.dgj_start_date()
         if start_date is None:
             wx.info("[update_dgj_trading_data] Checking lastest date is None !!!")
@@ -406,10 +406,18 @@ def update_dgj_trading_data(force=False):
 
         dgj_trading_data = re.findall(r'(?:\")(.*?)(?:\")', dgj_trading_str)
         page_arr = list()
+        # dd_counter = 1
+        trade_date = ''
         for data_str in dgj_trading_data:
             data_arr = data_str.split(',')
             trade_timestamp = time.mktime(time.strptime(data_arr[5], '%Y-%m-%d'))
+            # if trade_date == data_arr[5]:
+            #     dd_counter += 1
+            # else:
+            #     dd_counter =1
             trade_date = data_arr[5]
+            # wx.info("{}:{}:{}".format(trade_date, dd_counter, data_arr[2]))
+
             data_arr[5]= re.sub(r'-','',data_arr[5]) # 日期格式调整，去掉 -
             # wx.info("name:{} / {} / {}".format(data_arr[1],data_arr[3],data_arr[12],data_arr[14] ))
             data_arr[1] = data_arr[1][:20] # dgj_name
@@ -444,7 +452,7 @@ def update_dgj_trading_data(force=False):
 
 
 @wx_timer
-def update_whole_sales_data(force=False):
+def update_whole_sales_data_from_eastmoney(force=False):
     wx = lg.get_handle()
     web_data = ex_web_data()
     today = datetime.now().strftime('%Y-%m-%d')
@@ -528,19 +536,108 @@ def ws_supplement():
 
 
 @wx_timer
+def update_repo_data_from_eastmoney(force = False, start_date=None):
+    wx = lg.get_handle()
+    web_data = ex_web_data()
+    page_counter = 1
+    start_date = (date.today() + timedelta(days=-550)).strftime('%Y-%m-%d')
+    if force:
+        del_rows = web_data.repo_data_remove()
+        wx.info("[update_repo_data] Force to refresh Listed Company Repurchase data {} rows REMOVED, ".format(del_rows))
+    else:
+        # 清理过期数据, 删除550天之前的数据
+        del_rows = web_data.repo_data_remove(start_date=start_date)
+        wx.info("[update_repo_data_from_eastmoney] {} Rows of Expired data Removed ".format(del_rows))
+
+        # 保持 repo 表的数据，获得 repo 交易记录的最新日期
+        start_date = web_data.dgj_start_date()
+        if start_date is None:
+            wx.info("[update_dgj_trading_data] Checking lastest date is None !!!")
+            return -1
+        else:
+            wx.info("[update_dgj_trading_data] lastest date is {}".format(start_date))
+
+
+    east_money_repo_url="http://api.dataide.eastmoney.com/data/gethglist?pageindex="+str(page_counter)+\
+                        "&pagesize=50&orderby=upd&order=desc&jsonp_callback=var%20vehXbliK=(x)&" \
+                        "market=(0,1,2,3)&rt=51676827"
+    repo_str = web_data.get_json_str(url=east_money_repo_url, web_flag='eastmoney')
+    trunc_pos = repo_str.find('{"code":')
+    repo_str = repo_str[trunc_pos:]
+
+
+    # wx.info("{}".format(repo_str))
+    pass
+    # web_data.db_load_into_repo_data(df_repo= df_repo, start_date=start_date)
+
+
+
+
+@wx_timer
 def report_total_amount():
-    # wx = lg.get_handle()
     rp = ws_rp()
     rp.calc_total_amount()
 
 
 @wx_timer
-def report_days_vol(days=0, type=None):
-    # wx = lg.get_handle()
-    rp = ws_rp()
-    df_days_vol = rp.calc_days_vol(days, type)
-    return df_days_vol
+def report_days_vol(rp=None, days=0):
+    if rp is not None:
+        df_days_vol = rp.calc_days_vol(days)
+        rp.output_file(dd_df= df_days_vol, sheet_name='vol_'+str(days)+'_days',
+                       filename='volumne_'+str(days)+'days', type='.xlsx', index=False)
+    else:
+        return -1
 
+@wx_timer
+def report_ws_price(rp=None, days=180):
+    if rp is not None:
+        df_price_comparision = rp.ws_price_compare_close_price(days= days, close_date=None)
+        rp.output_file(dd_df=df_price_comparision, sheet_name='大宗交易_' + str(days) + '天统计表',
+                       filename='大宗交易_' + str(days) + '天统计表', type='.xlsx', index=False)
+    else:
+        return -1
+
+@wx_timer
+def report_dgj_trading(rp=None, limit=100):
+    if rp is not None:
+        df_dgj = rp.select_table(t_name='dgj_201901', where="", order="", limit=100)
+        df_dgj.rename(
+                columns={'date': '日期', 'id': '证券代码', 'dgj_name': '高管姓名', 'dgj_pos': '职位',
+                         'trader_name': '交易人', 'relation': '与高管关系', 'vol': '成交量(股)',
+                         'price': '成交价', 'amount': '成交金额', 'pct_chg': '变动比例(%)',
+                         'trading_type': '交易方式', 'in_hand': '仍持股量'}, inplace=True)
+        rp.output_file(dd_df=df_dgj, sheet_name='企业高管交易数据',
+                       filename='企业高管交易数据', type='.xlsx', index=False)
+    else:
+        return -1
+
+
+
+"""
+# 废弃函数，两个指标 交叉比对，导致不必要的复杂度
+# 对每个指标 都单独设置权重，然后将对应股票列表导入 nomination 和 caution 表
+"""
+@wx_timer
+def report_cross_dgj_ws(rp=None, ws_days=180, dgj_days=180):
+    if rp is not None:
+        df_price_comparision = rp.ws_price_compare_close_price(days=ws_days, close_date=None)  # close_date 默认是昨天
+        df_dgj_summary = rp.dgj_trading_summary(days=dgj_days)
+        df_cross = pd.merge(df_price_comparision, df_dgj_summary, how='outer',
+                            left_on=['证券代码','名称'], right_on=['证券代码','名称'])
+
+        close_price_date = (date.today() + timedelta(days=-1)).strftime('%Y%m%d')
+
+        cols = ['证券代码','名称','大宗交易次数','高管买入次数','高管卖出次数',
+                '大宗成交量（万股）','高管买入（万股）','高管卖出（万股）',
+                '收盘价('+close_price_date+')','大宗买入均价','高管买入均价','高管卖出均价',
+                '大宗最高买价','大宗最低买价','高管最高买价','高管最低买价',
+                '高管最高卖价','高管最低卖价']
+        df_cross = df_cross[cols]
+        rp.output_file(dd_df=df_cross, sheet_name="大宗"+str(ws_days)+"天-董监高"+str(dgj_days)+"天-收盘价",
+                       filename='大宗-董高监交易-最新收盘价比对', type='.xlsx', index=False)
+        pass
+    else:
+        return -1
 
 
 """

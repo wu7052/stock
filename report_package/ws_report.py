@@ -1,7 +1,10 @@
 import new_logger as lg
 from datetime import datetime, time, date, timedelta
+import os
+import sys
 import pandas as pd
 from db_package import db_ops
+
 
 class ws_rp():
     def __init__(self):
@@ -9,7 +12,6 @@ class ws_rp():
         wx.info("ws_report class __init__ called")
         try:
             self.db = db_ops(host='127.0.0.1', db='stock', user='wx', pwd='5171013')
-            wx.info("ex_web_data : __init__() called")
         except Exception as e:
             raise e
 
@@ -19,54 +21,165 @@ class ws_rp():
         self.db.handle.close()
         wx.info("ws_rp :{}: __del__() called".format(self))
 
+    def output_file(self, dd_df=None, filename='null', sheet_name=None, type='.xlsx', index=False):
+        wx = lg.get_handle()
+        work_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+        output_path = work_path + '\\report\\'
+        today = date.today().strftime('%Y%m%d')
+        filename = output_path + today + "_" + filename + type
+        if dd_df is None or dd_df.empty:
+            wx.info("[output_file] Dataframe is empty")
+        else:
+            if type == '.xlsx':
+                dd_df.to_excel(filename,index=index, sheet_name= sheet_name, float_format="%.2f", encoding='utf_8_sig')
+            else:
+                dd_df.to_csv(filename, index=index, encoding='utf_8_sig')
+        wx.info("[output_cvs] {} is completed".format(filename))
 
     def calc_total_amount(self):
-        wx = lg.get_handle()
-        start_date = (date.today() + timedelta(days=0)).strftime('%Y%m%d')
+        # wx = lg.get_handle()
+        # start_date = (date.today() + timedelta(days=0)).strftime('%Y%m%d')
         # wx.info("get list a total amount called")
         # self.db.db_call_procedure("list_a_total_amount", start_date, 1, 2, 3, 4, 5, 6)
         # self.db.cursor.callproc(p_name, (args[0], args[1], args[2], args[3], args[4], args[5], args[6]))
         p_name = "list_a_total_amount"
-        self.db.cursor.callproc(p_name, ('20190124', 1, 2, 3, 4, 5, 6,7,8))
+        self.db.cursor.callproc(p_name, ('20190124', 1, 2, 3, 4, 5, 6, 7, 8))
         self.db.cursor.execute(
             "select @_" + p_name + "_0, @_" + p_name + "_1, @_" + p_name + "_2, @_" + p_name + "_3, @_"
-            + p_name + "_4, @_" + p_name + "_5, @_" + p_name + "_6, @_"+ p_name + "_7, @_"+ p_name + "_8")
+            + p_name + "_4, @_" + p_name + "_5, @_" + p_name + "_6, @_" + p_name + "_7, @_" + p_name + "_8")
         result = self.db.cursor.fetchall()
         self.db.handle.commit()
-        wx.info(result)
 
-    def calc_days_vol(self, days = 0 , type = None):
-        # SELECT dd.id, sum(dd.vol) as sub_tt_vol, la.flow_shares as flow_shares, sum(dd.vol) /flow_shares as pct
-        # FROM stock.code_60_201901 as dd left join list_a as la on dd.id = la.id
-        # where str_to_date(dd.date,'%Y%m%d') > (current_date()-7)  group by dd.id;
+
+    """
+    # 大宗交易数据统计 ：股票代码、 交易次数、 成交量、 均价、最高价、最低价
+    # 对比指定日期的 收盘价， 默认是当前日期的前一天收盘价
+    """
+    def ws_price_compare_close_price(self, days=180, close_date=None):
         wx = lg.get_handle()
-        if type == '60':
-            sql = "SELECT dd.id, sum(dd.vol) , la.flow_shares as flow_shares, sum(dd.vol)/(flow_shares*100) as pct," \
-                  " sum(dd.vol)/" +str(days) + " as ave FROM stock.code_60_201901 as dd left join list_a as la on dd.id = la.id " \
-                  "where str_to_date(dd.date,'%Y%m%d') > (current_date()-" +str(days) + ")  group by dd.id order by pct desc;"
-        elif type == '30':
-            sql = "SELECT dd.id, sum(dd.vol) , la.flow_shares as flow_shares, sum(dd.vol)/(flow_shares*100) as pct," \
-                  " sum(dd.vol)/" +str(days) + " as ave FROM stock.code_30_201901 as dd left join list_a as la on dd.id = la.id " \
-                  "where str_to_date(dd.date,'%Y%m%d') > (current_date()-" +str(days) + ")  group by dd.id order by pct desc;"
-        elif type == '002':
-            sql = "SELECT dd.id, sum(dd.vol) , la.flow_shares as flow_shares, sum(dd.vol)/(flow_shares*100) as pct," \
-                  " sum(dd.vol)/" +str(days) + " as ave FROM stock.code_002_201901 as dd left join list_a as la on dd.id = la.id " \
-                  "where str_to_date(dd.date,'%Y%m%d') > (current_date()-" +str(days) + ")  group by dd.id order by pct desc;"
-        elif type == '00':
-            sql = "SELECT dd.id, sum(dd.vol) , la.flow_shares as flow_shares, sum(dd.vol)/(flow_shares*100) as pct," \
-                  " sum(dd.vol)/" +str(days) + " as ave FROM stock.code_00_201901 as dd left join list_a as la on dd.id = la.id " \
-                  "where str_to_date(dd.date,'%Y%m%d') > (current_date()-" +str(days) + ")  group by dd.id order by pct desc;"
-        else:
-            wx.info("[calc days vol] input Wrong Type {}".format(type))
+        table_name = { '00': 'stock.code_00_201901', '60': 'stock.code_60_201901',
+                       '30': 'stock.code_30_201901', '002': 'stock.code_002_201901'}
 
+        start_date = (date.today() + timedelta(days=-days)).strftime('%Y%m%d')
+        df_price_comparision = pd.DataFrame()
+
+        if close_date is None:
+            close_price_date = (date.today() + timedelta(days=-1)).strftime('%Y%m%d')
+        else:
+            close_price_date = close_date
+        for index, type in enumerate(table_name):
+            sql= "SELECT ws.id as `证券代码`, la.name as `名称`, count(ws.id) as `大宗交易次数`," \
+                 " sum(ws.vol) as `大宗成交量（万股）` , dd.close as `收盘价("+close_price_date+")`, " \
+                 " sum(ws.amount)/sum(ws.vol) as `大宗买入均价`, max(ws.price) as `大宗最高买价`,  min(ws.price) as `大宗最低买价` " \
+                 " FROM ws_201901 as ws  " \
+                 " left join "+table_name[type]+ "  as dd on dd.id = ws.id " \
+                 " left join list_a as la on la.id=ws.id where ws.id like '"+type+\
+                 "%' and ws.date > "+start_date+" and dd.date = "+close_price_date+\
+                 "  group by ws.id order by `大宗交易次数` desc"
+            iCount = self.db.cursor.execute(sql)
+            self.db.handle.commit()
+            if iCount > 0:
+                # wx.info("[calc days vol] acquire {} rows of result".format(iCount))
+                arr_record = self.db.cursor.fetchall()
+                columnDes = self.db.cursor.description  # 获取连接对象的描述信息
+                columnNames = [columnDes[i][0] for i in range(len(columnDes))]
+                sub_df_price = pd.DataFrame([list(i) for i in arr_record], columns=columnNames)
+                if df_price_comparision.empty:
+                    df_price_comparision = sub_df_price
+                else:
+                    df_price_comparision = df_price_comparision.append(sub_df_price)
+            else:
+                wx.info("[calc days vol] failed to exec SQL {}".format(sql))
+        return df_price_comparision
+
+    def calc_days_vol(self, days=0, limit=10):
+        wx = lg.get_handle()
+        table_name = {'60': 'stock.code_60_201901', '30': 'stock.code_30_201901',
+                      '002': 'stock.code_002_201901', '00': 'stock.code_00_201901'}
+        df_days_vol = pd.DataFrame()
+
+        for index, type in enumerate(table_name):
+            # wx.info("{} , {}".format(index, type))
+            sql = "SELECT dd.id as `证券代码`, la.list_date as 上市日期, la.name as 名称, sw1.industry_name as 申万一级行业, " \
+                  "sw2.industry_name as 申万二级行业, sum(dd.vol) / 100 as `累计成交量(万股)`, " \
+                  "la.flow_shares as `流动股本(万股)`, sum(dd.vol) / (flow_shares * 100) as `占比(%)`, " \
+                  "sum(dd.vol) / (" + str(days) + "*100) as `日均成交量(万股)` " \
+                  "FROM " + table_name[type] + " as dd  " \
+                  "left join list_a as la on dd.id = la.id " \
+                  "left join sw_industry_code as sw2 on la.sw_level_2 = sw2.industry_code " \
+                  "left join sw_industry_code as sw1 on la.sw_level_1 = sw1.industry_code " \
+                  "where str_to_date(dd.date, '%Y%m%d') > (current_date() - " + str(days) + ") " \
+                  "group by dd.id order by `占比(%)` desc limit " + str(limit)
+
+            iCount = self.db.cursor.execute(sql)
+            self.db.handle.commit()
+            if iCount > 0:
+                # wx.info("[calc days vol] acquire {} rows of result".format(iCount))
+                arr_days_vol = self.db.cursor.fetchall()
+                columnDes = self.db.cursor.description  # 获取连接对象的描述信息
+                columnNames = [columnDes[i][0] for i in range(len(columnDes))]
+                sub_df_days_vol = pd.DataFrame([list(i) for i in arr_days_vol], columns=columnNames)
+                if df_days_vol.empty:
+                    df_days_vol = sub_df_days_vol
+                else:
+                    df_days_vol = df_days_vol.append(sub_df_days_vol)
+            else:
+                wx.info("[calc days vol] failed to exec SQL {}".format(sql))
+        df_days_vol.sort_values(by="占比(%)", ascending=False, inplace=True)
+        return df_days_vol
+
+    def select_table(self, t_name=None, where="", order="", limit=100):
+        wx = lg.get_handle()
+        if t_name is not None:
+            sql = "select * from "+t_name+" "+where+" "+order+" limit "+str(limit)
+        else:
+            wx.info("[select_table] Err: Table name is None")
+        df_ret = self._exec_sql(sql)
+        return df_ret
+
+    def _exec_sql(self, sql=None):
+        wx = lg.get_handle()
+        if sql is None:
+            return None
         iCount = self.db.cursor.execute(sql)
         self.db.handle.commit()
         if iCount > 0:
-            wx.info("[calc days vol] acquire {} rows of result".format(iCount))
-            arr_days_vol = self.db.cursor.fetchall()
+            # wx.info("[calc days vol] acquire {} rows of result".format(iCount))
+            arr_ret = self.db.cursor.fetchall()
             columnDes = self.db.cursor.description  # 获取连接对象的描述信息
             columnNames = [columnDes[i][0] for i in range(len(columnDes))]
-            df_days_vol = pd.DataFrame([list(i) for i in arr_days_vol], columns=columnNames)
-            return  df_days_vol
+            df_ret = pd.DataFrame([list(i) for i in arr_ret], columns=columnNames)
+            return df_ret
         else:
-            wx.info("[calc days vol] failed to exec SQL {}".format(sql))
+            wx.info("[_exec_sql] failed to exec SQL {}".format(sql))
+            return None
+
+
+    def dgj_trading_summary(self, days=90):
+        wx = lg.get_handle()
+        start_date = (date.today() + timedelta(days=-days)).strftime('%Y%m%d')
+        buy_sql = "SELECT dgj.id as `证券代码`, la.name as `名称`, count(dgj.id) as `高管买入次数`, " \
+                  " sum(dgj.vol) /10000 as `高管买入（万股）`, sum(dgj.amount)/sum(dgj.vol) as `高管买入均价`, " \
+                  " max(dgj.price) as `高管最高买价`, min(dgj.price) as `高管最低买价` " \
+                  " FROM dgj_201901 as dgj left join list_a as la on dgj.id = la.id " \
+                  " where dgj.date > "+start_date+" and dgj.vol > 0  group by dgj.id"
+
+        sell_sql = "SELECT dgj.id as `证券代码`, la.name as `名称`, count(dgj.id) as `高管卖出次数`, " \
+                   " sum(dgj.vol) /10000 as `高管卖出（万股）`, sum(dgj.amount)/sum(dgj.vol) as `高管卖出均价`," \
+                   " max(dgj.price) as `高管最高卖价`, min(dgj.price) as `高管最低卖价` " \
+                   " FROM dgj_201901 as dgj left join list_a as la on dgj.id = la.id " \
+                   " where dgj.date > " + start_date + " and dgj.vol < 0  group by dgj.id"
+
+        buy_df = self._exec_sql(buy_sql)
+        sell_df = self._exec_sql(sell_sql)
+        df_dgj_trading = pd.merge(buy_df, sell_df, how='outer', left_on=['证券代码','名称'], right_on=['证券代码','名称'])
+        # df_dgj_trading.fillna(0, inplace=True)
+        return  df_dgj_trading
+
+"""
+# SELECT id, sum(vol) as `成交量` , sum(amount)/sum(vol) as `机构买入均价`, max(price) as `最高价`, min(price) as `最低价`, count(id) as `机构交易次数` 
+# FROM stock.ws_201901 where date > 20180501
+# group by id order by `机构交易次数` desc ;
+"""
+
+# df = pd.read_excel(os.getcwd() + os.sep + 'stock.xlsx',converters = {u'证券代码':str})

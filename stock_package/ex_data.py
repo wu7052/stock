@@ -153,7 +153,7 @@ class ex_web_data(object):
                 'Cache-Control': 'max-age=0',
                 'Connection': 'keep-alive',
                 'Cookie': 'st_pvi=71738581877645; st_sp=2018-11-22%2011%3A40%3A40; qgqp_b_id=8db9365e6c143170016c773cee144103; em_hq_fls=js; HAList=a-sz-000333-%u7F8E%u7684%u96C6%u56E2%2Ca-sz-300059-%u4E1C%u65B9%u8D22%u5BCC; st_si=74062085443937; st_asi=delete; st_sn=27; st_psi=20190113183705692-113300301007-4079839165',
-                'Host': 'dcfm.eastmoney.com',
+                # 'Host': 'dcfm.eastmoney.com',
                 'Upgrade-Insecure-Requests': 1,
                 'User-Agent': r'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.80 Safari/537.36'
             }
@@ -347,6 +347,7 @@ class ex_web_data(object):
         else:
             return None
 
+
     def whole_sales_remove_expired_data(self):
         expire_date = (date.today() + timedelta(days=-550)).strftime('%Y%m%d')
 
@@ -433,8 +434,11 @@ class ex_web_data(object):
         return iCount
 
 
-    def dgj_trading_data_remove(self):
-        sql = "delete from dgj_201901"
+    def dgj_trading_data_remove(self,start_date=None):
+        if start_date is not None:
+            sql = "delete from dgj_201901 where date <= "+start_date
+        else:
+            sql = "delete from dgj_201901"
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
         return iCount
@@ -449,20 +453,63 @@ class ex_web_data(object):
         return iCount
 
     def dgj_start_date(self):
-        sql = "select date from dgj_201901 as dgj order by dgj.date desc limit 1"
+        sql = "select distinct date from dgj_201901 as dgj order by dgj.date desc limit 2"
 
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
-        if iCount == 1:
-            result = self.db.cursor.fetchone()
-            record_date = datetime.strptime(result[0], "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
-            start_date = record_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期+1天
+        if iCount > 1:
+            result = self.db.cursor.fetchall()
+            first_date = result[0][0]
+            second_date =  result[1][0]
+            # record_date = datetime.strptime(result[0], "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
+            # start_date = record_date.strftime('%Y%m%d')  # 起始日期 为记录日期+1天
+            sql = "delete from dgj_201901 where date = "+ first_date
+            iCount = self.db.cursor.execute(sql)  # 返回值
+            self.db.handle.commit()
+
+            start_date = datetime.strptime(second_date, "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
+            start_date = start_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期+1天
+
             return start_date
         else:
             return None
 
+    def repo_remove_data(self,start_date=None):
+        if start_date is not None:
+            sql = "delete from repo_201901 where date < "+start_date
+        else:
+            sql= "delete from repo_201901"
+        iCount = self.db.cursor.execute(sql)  # 返回值
+        self.db.handle.commit()
+        return iCount
 
-
+    def east_repo_json_parse(self, json_str=None):
+        if json_str is not None:
+            json_obj = json.loads(json_str)
+        self.page_count = json_obj['pages']
+        if len(json_obj['data']) == 0:
+            return None
+        dt = jsonpath(json_obj, '$..TDATE')
+        date = [re.sub(r'-', '', tmp[0:10]) for tmp in dt]
+        id = jsonpath(json_obj, '$..SECUCODE')
+        disc = jsonpath(json_obj, '$..Zyl')
+        price = jsonpath(json_obj, '$..PRICE')
+        vol = jsonpath(json_obj, '$..TVOL')
+        v_t = jsonpath(json_obj, '$..Cjeltszb')
+        vol_tf = [float(tmp) * 100 for tmp in v_t]  # 换算成百分比，交易量占流动股的百分比
+        amount = jsonpath(json_obj, '$..TVAL')
+        b_code = jsonpath(json_obj, '$..BUYERCODE')
+        s_code = jsonpath(json_obj, '$..SALESCODE')
+        close_price = jsonpath(json_obj, '$..CPRICE')
+        pct_chg = jsonpath(json_obj, '$..RCHANGE')
+        b_name = jsonpath(json_obj, '$..BUYERNAME')
+        s_name = jsonpath(json_obj, '$..SALESNAME')
+        ws_data = [date, id, disc, price, vol, vol_tf, amount, b_code, s_code, close_price, pct_chg, b_name, s_name]
+        df = pd.DataFrame(ws_data)
+        df1 = df.T
+        df1.rename(columns={0: 'Date', 1: 'ID', 2: 'Disc', 3: 'Price', 4: 'Vol', 5: 'Vol_tf', 6: 'Amount', 7: 'B_code',
+                            8: 'S_code', 9: 'Close_price', 10: 'Pct_chg', 11: 'B_name', 12: 'S_name'}, inplace=True)
+        return df1
 
 """
         sql = "select distinct b_code from ws_201901 where id = %s order by date asc"
