@@ -8,6 +8,7 @@ import os
 from urllib import parse
 import new_logger as lg
 from datetime import datetime, time, date, timedelta
+import time
 import pandas as pd
 import numpy as np
 import json
@@ -23,7 +24,7 @@ class ex_web_data(object):
         # self.logger = myLogger(log_dir)
         try:
             self.db = db_ops(host='127.0.0.1', db='stock', user='wx', pwd='5171013')
-            wx.info("ex_web_data : __init__() called")
+            wx.info("[OBJ] ex_web_data : __init__() called")
         except Exception as e:
             raise e
 
@@ -32,7 +33,7 @@ class ex_web_data(object):
         wx = lg.get_handle()
         self.db.cursor.close()
         self.db.handle.close()
-        wx.info("ex_web_data :{}: __del__() called".format(self))
+        wx.info("[OBJ] ex_web_data : __del__() called")
 
     def url_encode(self, str):
         return parse.quote(str)
@@ -50,9 +51,9 @@ class ex_web_data(object):
         id_array = self.db.cursor.fetchmany(id)
         return id_array
 
-    def db_load_into_sw_industry(self, df_sw_industry = None):
+    def db_load_into_sw_industry(self, df_sw_industry=None):
         wx = lg.get_handle()
-        if df_sw_industry is None :
+        if df_sw_industry is None:
             wx.info("[db_load_into_sw_industry] Err: SW DataFrame is Empty,")
             return -1
         sw_industry_arr = df_sw_industry.values.tolist()
@@ -64,13 +65,13 @@ class ex_web_data(object):
         self.db.cursor.executemany(sql, sw_industry_arr)
         self.db.handle.commit()
 
-    def db_get_sw_industry_code(self, level = 2):
+    def db_get_sw_industry_code(self, level=2):
         wx = lg.get_handle()
         # 取第二级行业代码
         sql = "select industry_code from sw_industry_code where level = " + str(level)
         iCount = self.db.cursor.execute(sql)
         if iCount > 0:
-            industry_code_arr =  self.db.cursor.fetchall()
+            industry_code_arr = self.db.cursor.fetchall()
             return industry_code_arr
         else:
             return -1
@@ -79,16 +80,15 @@ class ex_web_data(object):
         wx = lg.get_handle()
         if code is None or id_arr is None:
             wx.info(" Code {} or id_arr {} is None".format(code, id_arr))
-            return  -1
-        sw_level_1 = code[0:2]+'0000'
+            return -1
+        sw_level_1 = code[0:2] + '0000'
         sw_level_2 = code
 
         for s_id in id_arr:
-            sql = "update list_a set sw_level_1=%s , sw_level_2=%s where id = %s"%(sw_level_1, sw_level_2, s_id)
+            sql = "update list_a set sw_level_1=%s , sw_level_2=%s where id = %s" % (sw_level_1, sw_level_2, s_id)
             self.db.cursor.execute(sql)
             self.db.handle.commit()
         wx.info("SW Industry Code {} updated {} stocks ".format(code, len(id_arr)))
-
 
     def db_load_into_list_a_2(self, basic_info_df):
         wx = lg.get_handle()
@@ -208,18 +208,16 @@ class ex_web_data(object):
             # self.logger.wt.info("json string is Null , exit ...\n")
             return None
 
-
-    def sina_industry_json_parse(self, json_str = None):
+    def sina_industry_json_parse(self, json_str=None):
         if json_str is None:
             return -1
         json_obj = json.loads(json_str)
         stock_id_arr = jsonpath(json_obj, '$..code')
         return stock_id_arr
 
-
-    def db_load_into_dgj_trade(self, dd_df=None, t_name = 'dgj_201901'):
+    def db_load_into_dgj_trade(self, dd_df=None, t_name='dgj_201901'):
         wx = lg.get_handle()
-        if dd_df is None :
+        if dd_df is None:
             wx.info("[db_load_into_dgj_trade] Err: Daily Data Frame Empty,")
             return -1
         dd_array = dd_df.values.tolist()
@@ -228,13 +226,11 @@ class ex_web_data(object):
             dd_array[i] = tuple(dd_array[i])
             i += 1
 
-        sql = "REPLACE INTO " +t_name+ " SET date=%s, id=%s, dgj_name=%s, dgj_pos=%s, trader_name=%s, " \
-                                       "relation=%s, vol=%s, price=%s, amount=%s, pct_chg=%s, " \
-                                       "trading_type=%s, in_hand=%s"
+        sql = "REPLACE INTO " + t_name + " SET date=%s, id=%s, dgj_name=%s, dgj_pos=%s, trader_name=%s, " \
+                                         "relation=%s, vol=%s, price=%s, amount=%s, pct_chg=%s, " \
+                                         "trading_type=%s, in_hand=%s"
         self.db.cursor.executemany(sql, dd_array)
         self.db.handle.commit()
-
-
 
     def db_load_into_daily_data(self, dd_df=None, t_name=None, mode='basic'):
         wx = lg.get_handle()
@@ -248,7 +244,7 @@ class ex_web_data(object):
             i += 1
         if mode == 'full':
             sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, open=%s, high=%s, low=%s, " \
-                                            "close=%s, pre_close=%s, chg=%s,  pct_chg=%s,vol=%s, amount=%s, " \
+                                             "close=%s, pre_close=%s, chg=%s,  pct_chg=%s,vol=%s, amount=%s, " \
                                              "qrr=%s, tor=%s, pct_up_down=%s, pe=%s, pb=%s"
         elif mode == 'basic':
             sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, open=%s, high=%s, low=%s, " \
@@ -260,7 +256,6 @@ class ex_web_data(object):
         self.db.cursor.executemany(sql, dd_array)
         self.db.handle.commit()
         # wx.info(dd_array)
-
 
     def east_ws_json_parse(self, json_str=None):
         if json_str is not None:
@@ -305,7 +300,7 @@ class ex_web_data(object):
         self.db.cursor.executemany(sql, ws_array)
         self.db.handle.commit()
 
-    def db_load_into_ws_share_holder(self, df_share_holder = None):
+    def db_load_into_ws_share_holder(self, df_share_holder=None):
         wx = lg.get_handle()
         if df_share_holder is None:
             wx.info("[db_load_into_ws_share_holder]Err: ws share holder dataframe is Empty,")
@@ -320,7 +315,6 @@ class ex_web_data(object):
               "s_price=%s, s_vol_tf=%s"
         self.db.cursor.executemany(sql, ws_sh_array)
         self.db.handle.commit()
-
 
     def whole_sales_stock_id(self):
         sql = "select distinct id from ws_201901"
@@ -347,14 +341,13 @@ class ex_web_data(object):
         else:
             return None
 
-
     def whole_sales_remove_expired_data(self):
         expire_date = (date.today() + timedelta(days=-550)).strftime('%Y%m%d')
 
         # select * from ws_201901 where str_to_date(date, '%Y%m%d') < str_to_date('20170906', '%Y%m%d');
         # sql = "select date from stock.ws_201901  where str_to_date(date,'%Y%m%d') " \
         #       "between str_to_date("+ start +",'%Y%m%d') and str_to_date(" + end+",'%Y%m%d'); "
-        sql = "delete from ws_201901 where str_to_date(date,'%Y%m%d') < str_to_date("+expire_date+", '%Y%m%d' )"
+        sql = "delete from ws_201901 where str_to_date(date,'%Y%m%d') < str_to_date(" + expire_date + ", '%Y%m%d' )"
         # wx.info("[whole_sales_remove_expired_data]: {}".format(sql))
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
@@ -387,7 +380,7 @@ class ex_web_data(object):
         df_buyer['s_price'] = 0
         df_buyer['s_vol_tf'] = 0
         df_buyer = df_buyer.reset_index()
-        df_buyer.columns = ['h_code', 'b_vol', 'b_price', 'b_vol_tf',  's_vol', 's_price', 's_vol_tf']
+        df_buyer.columns = ['h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf']
         df_buyer = df_buyer.reindex(
             columns=['h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
 
@@ -402,17 +395,17 @@ class ex_web_data(object):
         df_seller['b_price'] = 0
         df_seller['b_vol_tf'] = 0
         df_seller = df_seller.reset_index()
-        df_seller.columns = ['h_code', 's_vol', 's_price', 's_vol_tf',  'b_vol', 'b_price', 'b_vol_tf']
+        df_seller.columns = ['h_code', 's_vol', 's_price', 's_vol_tf', 'b_vol', 'b_price', 'b_vol_tf']
         df_seller = df_seller.reindex(
             columns=['h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
 
         # 买方、卖方 Dataframe 合并成一个 Dataframe
         df_share_holder = pd.concat([df_buyer, df_seller], axis=0, join='outer')
-        df_share_holder = df_share_holder.groupby('h_code').sum()  #  合并 h_code相同 的 买家 、卖家 数据
-        df_share_holder = df_share_holder.reset_index() # 重新整理成一个 Dataframe
+        df_share_holder = df_share_holder.groupby('h_code').sum()  # 合并 h_code相同 的 买家 、卖家 数据
+        df_share_holder = df_share_holder.reset_index()  # 重新整理成一个 Dataframe
         df_share_holder['id'] = s_id
         df_share_holder = df_share_holder.reindex(
-            columns=['id','h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
+            columns=['id', 'h_code', 'b_vol', 'b_price', 'b_vol_tf', 's_vol', 's_price', 's_vol_tf'])
 
         return df_share_holder
 
@@ -426,23 +419,20 @@ class ex_web_data(object):
             return False
         return True
 
-
     def whole_sales_data_remove(self):
         sql = "delete from ws_201901 "
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
         return iCount
 
-
-    def dgj_trading_data_remove(self,start_date=None):
+    def dgj_trading_data_remove(self, start_date=None):
         if start_date is not None:
-            sql = "delete from dgj_201901 where date <= "+start_date
+            sql = "delete from dgj_201901 where date <= " + start_date
         else:
             sql = "delete from dgj_201901"
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
         return iCount
-
 
     def dgj_remove_expired_data(self):
         expire_date = (date.today() + timedelta(days=-550)).strftime('%Y%m%d')
@@ -452,33 +442,34 @@ class ex_web_data(object):
         self.db.handle.commit()
         return iCount
 
-    def dgj_start_date(self):
-        sql = "select distinct date from dgj_201901 as dgj order by dgj.date desc limit 2"
+    def dgj_repo_start_date(self, table_name=None):
+        sql = "select distinct date from " + table_name + " as dgj order by dgj.date desc limit 3"
 
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
         if iCount > 1:
             result = self.db.cursor.fetchall()
-            first_date = result[0][0]
-            second_date =  result[1][0]
+            # first_date = result[0][0]
+            # second_date = result[1][0]
+            third_date = result[2][0]
             # record_date = datetime.strptime(result[0], "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
             # start_date = record_date.strftime('%Y%m%d')  # 起始日期 为记录日期+1天
-            sql = "delete from dgj_201901 where date = "+ first_date
+            sql = "delete from " + table_name + " where date > " + third_date
             iCount = self.db.cursor.execute(sql)  # 返回值
             self.db.handle.commit()
 
-            start_date = datetime.strptime(second_date, "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
+            start_date = datetime.strptime(third_date, "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
             start_date = start_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期+1天
 
             return start_date
         else:
             return None
 
-    def repo_remove_data(self,start_date=None):
+    def repo_remove_data(self, start_date=None):
         if start_date is not None:
-            sql = "delete from repo_201901 where date < "+start_date
+            sql = "delete from repo_201901 where notice_date < " + start_date
         else:
-            sql= "delete from repo_201901"
+            sql = "delete from repo_201901"
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
         return iCount
@@ -486,32 +477,70 @@ class ex_web_data(object):
     def east_repo_json_parse(self, json_str=None):
         if json_str is not None:
             json_obj = json.loads(json_str)
-        self.page_count = json_obj['pages']
+
+        self.total_pages = json_obj['pages']
+
         if len(json_obj['data']) == 0:
             return None
-        dt = jsonpath(json_obj, '$..TDATE')
-        date = [re.sub(r'-', '', tmp[0:10]) for tmp in dt]
-        id = jsonpath(json_obj, '$..SECUCODE')
-        disc = jsonpath(json_obj, '$..Zyl')
-        price = jsonpath(json_obj, '$..PRICE')
-        vol = jsonpath(json_obj, '$..TVOL')
-        v_t = jsonpath(json_obj, '$..Cjeltszb')
-        vol_tf = [float(tmp) * 100 for tmp in v_t]  # 换算成百分比，交易量占流动股的百分比
-        amount = jsonpath(json_obj, '$..TVAL')
-        b_code = jsonpath(json_obj, '$..BUYERCODE')
-        s_code = jsonpath(json_obj, '$..SALESCODE')
-        close_price = jsonpath(json_obj, '$..CPRICE')
-        pct_chg = jsonpath(json_obj, '$..RCHANGE')
-        b_name = jsonpath(json_obj, '$..BUYERNAME')
-        s_name = jsonpath(json_obj, '$..SALESNAME')
-        ws_data = [date, id, disc, price, vol, vol_tf, amount, b_code, s_code, close_price, pct_chg, b_name, s_name]
-        df = pd.DataFrame(ws_data)
+        id = jsonpath(json_obj, '$..dim_scode')
+        name = jsonpath(json_obj, '$..securityshortname')
+        notice_date_stamp = jsonpath(json_obj, '$..shmrsltnoticedate')
+        notice_date = self._datestamp_to_srt(notice_date_stamp)
+        start_date_stamp = jsonpath(json_obj, '$..repurstartdate')
+        start_date = self._datestamp_to_srt(start_date_stamp)
+        end_date_stamp = jsonpath(json_obj, '$..repurenddate')
+        end_date = self._datestamp_to_srt(end_date_stamp)
+        # progress = [float(tmp) * 100 for tmp in v_t]
+        progress = jsonpath(json_obj, '$..repurprogress')
+        plan_low_price = jsonpath(json_obj, '$..repurpricelower')
+        plan_high_price = jsonpath(json_obj, '$..repurpricecap')
+        plan_low_vol = jsonpath(json_obj, '$..repurnumlower')
+        plan_high_vol = jsonpath(json_obj, '$..repurnumcap')
+        plan_low_amount = jsonpath(json_obj, '$..repuramountlower')
+        plan_high_amount = jsonpath(json_obj, '$..repuramountlimit')
+        buy_in_low_price = jsonpath(json_obj, '$..repurpricelower1')
+        buy_in_high_price = jsonpath(json_obj, '$..repurpricecap1')
+        buy_in_vol = jsonpath(json_obj, '$..repurnum')
+        buy_in_amount = jsonpath(json_obj, '$..repuramount')
+        repo_data = [id, name, notice_date, start_date, end_date, progress, plan_low_price, plan_high_price,
+                     plan_low_vol, plan_high_vol, plan_low_amount, plan_high_amount,
+                     buy_in_low_price, buy_in_high_price, buy_in_vol, buy_in_amount]
+        df = pd.DataFrame(repo_data)
         df1 = df.T
-        df1.rename(columns={0: 'Date', 1: 'ID', 2: 'Disc', 3: 'Price', 4: 'Vol', 5: 'Vol_tf', 6: 'Amount', 7: 'B_code',
-                            8: 'S_code', 9: 'Close_price', 10: 'Pct_chg', 11: 'B_name', 12: 'S_name'}, inplace=True)
+        df1.rename(columns={0: 'id', 1: 'name', 2: 'notice_date', 3: 'start_date', 4: 'end_date', 5: 'progress',
+                            6: 'plan_low_price', 7: 'plan_high_price', 8: 'plan_low_vol', 9: 'plan_high_vol',
+                            10: 'plan_low_amount', 11: 'plan_high_amount', 12: 'buy_in_low_price',
+                            13: 'buy_in_high_price', 14: 'buy_in_vol', 15: 'buy_in_amount'}, inplace=True)
         return df1
 
-"""
+    def _datestamp_to_srt(self, date_arr):
+        ret_date_arr = list()
+        for datestamp in date_arr:
+            if datestamp is None:
+                ret_date_arr.append('19900101')
+            else:
+                x = time.strftime('%Y%m%d', time.localtime(datestamp / 1000))
+                ret_date_arr.append(x)
+        return ret_date_arr
+
+    def db_load_into_repo(self, df_repo=None, t_name='repo_201901'):
+        wx = lg.get_handle()
+        if df_repo is None:
+            wx.info("[db_load_into_repo] Err: Repo DataFrame is Empty,")
+            return -1
+        repo_arr = df_repo.values.tolist()
+        i = 0
+        while i < len(repo_arr):
+            repo_arr[i] = tuple(repo_arr[i])
+            i += 1
+        sql = "REPLACE INTO " + t_name + " SET id=%s, name=%s, notice_date=%s, start_date=%s, " \
+                                         "end_date=%s, progress=%s, plan_low_price=%s, plan_high_price=%s, " \
+                                         "plan_low_vol=%s, plan_high_vol=%s, plan_low_amount=%s, plan_high_amount=%s, " \
+                                         "buy_in_price_low=%s, buy_in_price_high=%s, buy_in_vol=%s, buy_in_amount=%s"
+        self.db.cursor.executemany(sql, repo_arr)
+        self.db.handle.commit()
+
+        """
         sql = "select distinct b_code from ws_201901 where id = %s order by date asc"
         self.db.cursor.execute(sql, (s_id))
         self.db.handle.commit()

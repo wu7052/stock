@@ -9,7 +9,7 @@ from db_package import db_ops
 class ws_rp():
     def __init__(self):
         wx = lg.get_handle()
-        wx.info("ws_report class __init__ called")
+        wx.info("[OBJ] ws_rp __init__ called")
         try:
             self.db = db_ops(host='127.0.0.1', db='stock', user='wx', pwd='5171013')
         except Exception as e:
@@ -19,7 +19,7 @@ class ws_rp():
         wx = lg.get_handle()
         self.db.cursor.close()
         self.db.handle.close()
-        wx.info("ws_rp :{}: __del__() called".format(self))
+        wx.info("[OBJ] ws_rp : __del__() called")
 
     def output_file(self, dd_df=None, filename='null', sheet_name=None, type='.xlsx', index=False):
         wx = lg.get_handle()
@@ -128,31 +128,6 @@ class ws_rp():
         df_days_vol.sort_values(by="占比(%)", ascending=False, inplace=True)
         return df_days_vol
 
-    def select_table(self, t_name=None, where="", order="", limit=100):
-        wx = lg.get_handle()
-        if t_name is not None:
-            sql = "select * from "+t_name+" "+where+" "+order+" limit "+str(limit)
-        else:
-            wx.info("[select_table] Err: Table name is None")
-        df_ret = self._exec_sql(sql)
-        return df_ret
-
-    def _exec_sql(self, sql=None):
-        wx = lg.get_handle()
-        if sql is None:
-            return None
-        iCount = self.db.cursor.execute(sql)
-        self.db.handle.commit()
-        if iCount > 0:
-            # wx.info("[calc days vol] acquire {} rows of result".format(iCount))
-            arr_ret = self.db.cursor.fetchall()
-            columnDes = self.db.cursor.description  # 获取连接对象的描述信息
-            columnNames = [columnDes[i][0] for i in range(len(columnDes))]
-            df_ret = pd.DataFrame([list(i) for i in arr_ret], columns=columnNames)
-            return df_ret
-        else:
-            wx.info("[_exec_sql] failed to exec SQL {}".format(sql))
-            return None
 
 
     def dgj_trading_summary(self, days=90):
@@ -170,8 +145,8 @@ class ws_rp():
                    " FROM dgj_201901 as dgj left join list_a as la on dgj.id = la.id " \
                    " where dgj.date > " + start_date + " and dgj.vol < 0  group by dgj.id"
 
-        buy_df = self._exec_sql(buy_sql)
-        sell_df = self._exec_sql(sell_sql)
+        buy_df = self.db._exec_sql(buy_sql)
+        sell_df = self.db._exec_sql(sell_sql)
         df_dgj_trading = pd.merge(buy_df, sell_df, how='outer', left_on=['证券代码','名称'], right_on=['证券代码','名称'])
         # df_dgj_trading.fillna(0, inplace=True)
         return  df_dgj_trading
