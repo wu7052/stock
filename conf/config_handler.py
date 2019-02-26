@@ -19,5 +19,9 @@ class conf_handler():
         wx.info("[OBJ] Conf_handler : __del__ called")
 
 
-    def read(self, sec=None, opt=None):
+    def rd_opt(self, sec=None, opt=None):
         return self.rd.get(sec, opt)
+
+
+    def rd_sec(self, sec=None):
+        return self.rd.items(section= sec)

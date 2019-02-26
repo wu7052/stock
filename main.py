@@ -9,7 +9,7 @@ wx = lg.get_handle()
 
 from report_package import ws_rp
 from functions import *
-from conf import conf_handler
+# from conf import conf_handler
 
 """
 # 导入配置文件
@@ -30,9 +30,9 @@ from conf import conf_handler
 # 从上证、深证 网站更新 A 股基础信息
 # 从申银万国 更新 行业分类
 """
-# update_sh_basic_info()
-# update_sz_basic_info()
-# update_sw_industry_into_basic_info()
+update_sh_basic_info()
+update_sz_basic_info()
+update_sw_industry_into_basic_info()
 
 
 """####################################################################
@@ -40,7 +40,7 @@ from conf import conf_handler
 # supplement = True 表示只添加 增补信息 到数据表， = False 表示所有信息添加到数据表
 """
 # 常用功能，从 eastmoney 获得全部的 日交易数据
-# update_daily_data_from_eastmoney(supplement=False)
+update_daily_data_from_eastmoney(supplement=False)
 
 # 更新当前数据到 指定的日期
 # update_daily_data_from_eastmoney(date= '20190202',supplement=False)
@@ -52,14 +52,14 @@ from conf import conf_handler
 # 截止时间 是今天； force = True 强制更新，删除旧数据
 # update_ws_share_holder 更新 share_holder 表的汇总数据
 """
-# update_whole_sales_data_from_eastmoney(force=False)
-# update_ws_share_holder()
+update_whole_sales_data_from_eastmoney(force=False)
+update_ws_share_holder()
 
 
 """####################################################################
 # 从 eastmoney 获得 董高监 的交易数据（日期、股票、成交人、价格、数量、董高监、关系）
 """
-# update_dgj_trading_data_from_eastmoney(force= True)
+update_dgj_trading_data_from_eastmoney(force= False)
 
 
 """
@@ -67,13 +67,13 @@ from conf import conf_handler
 # 001：预案 ； 002: 股东大会通过 ； 003：股东大会否决
 # 004：实施 ； 005：终止实施 ； 006： 实施完成
 """
-# update_repo_data_from_eastmoney()
+update_repo_data_from_eastmoney()
 
 
 """####################################################################
 # 大宗交易 ws表中 补充 buy_date, sell_date，调用 mysql 存储过程
 """
-# ws_supplement()
+ws_supplement()
 
 
 """####################################################################
@@ -101,13 +101,14 @@ from conf import conf_handler
 # 数据分析结果导入fruit表
 """
 analysis_dgj()
-
+analysis_repo()
+# analysis_ws()
 
 """####################################################################
 # 报表输出功能
 """
 # report_total_amount()
-reporter = ws_rp()
+# reporter = ws_rp()
 
 # 董高监 交易数据，最新100条
 # report_dgj_trading(rp=reporter, limit=100)

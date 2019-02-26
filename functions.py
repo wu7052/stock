@@ -639,13 +639,50 @@ def report_repo_completion_data(rp=None):
 @wx_timer
 def analysis_dgj():
     ana = analyzer()
-    ana_matrix = {'dgj_year':[-365,'500000'], 'dgj_6mon':[-180,'300000'], 'dgj_3mon':[-90,'100000'],
-                  'dgj_1mon':[-30,'50000'], 'dgj_2wk':[-14,'10000']}
+    # ana_para = {'dgj_year':[-365,'5000000'], 'dgj_6mon':[-180,'3000000'], 'dgj_3mon':[-90,'1000000'],
+    #               'dgj_1mon':[-30,'500000'], 'dgj_2wk':[-14,'100000']}
+
+    ana_matrix = dict(ana.h_conf.rd_sec(sec='ass_dgj_date'))
 
     for key in ana_matrix.keys():
-        start_date = (date.today() + timedelta(days=ana_matrix[key][0])).strftime('%Y%m%d')
-        ana.ana_dgj_trading(ass_type = key, start_date = start_date, vol=ana_matrix[key][1])
+        # ana_para[key].append(ana_matrix[key])
+        ana_para = ana_matrix[key].split("#")
+        start_date = (date.today() + timedelta(days=int(ana_para[1]))).strftime('%Y%m%d')
+        ana.ana_dgj_trading(ass_type = key, start_date = start_date, vol=ana_para[2], ass_weight=ana_para[0])
 
+
+@wx_timer
+def analysis_repo():
+    ana = analyzer()
+    # ana_para = {'repo_b_10m_30m' : ['between 10000000 and 30000000'],
+    #             'repo_b_30m_50m' : ['between 30000000 and 50000000'],
+    #             'repo_b_50m_70m' : ['between 50000000 and 70000000'],
+    #             'repo_b_70m_90m' : ['between 70000000 and 90000000'],
+    #             'repo_b_90m_110m': ['between 90000000 and 110000000'],
+    #             'repo_b_110m_140m' : ['between 110000000 and 140000000'],
+    #             'repo_b_140m_170m' : ['between 140000000 and 170000000'],
+    #             'repo_b_170m_200m' : ['between 170000000 and 200000000'],
+    #             'repo_b_200m_mm' : ['>200000000'],
+    #             }
+
+    ana_matrix = dict(ana.h_conf.rd_sec(sec='ass_repo_amount'))
+    start_date = (date.today() + timedelta(days=-365)).strftime('%Y%m%d')
+    for key in ana_matrix.keys():
+        # ana_para[key].append(ana_matrix[key])
+        ana_para = ana_matrix[key].split("#")
+        ana.ana_repo(ass_type=key, start_date=start_date, vol=ana_para[1], ass_weight=ana_para[0])
+
+
+@wx_timer
+def analysis_ws():
+    ana = analyzer()
+    ana_matrix = dict(ana.h_conf.rd_sec(sec='ass_ws_disc'))
+    start_date = (date.today() + timedelta(days=-550)).strftime('%Y%m%d')
+    for key in ana_matrix.keys():
+        ana_para = ana_matrix[key].split("#")
+        ana.ana_ws(ass_type=key, start_date = start_date, ass_disc=ana_para[1], ass_weight = ana_para[0])
+
+    #     pass
 
 
 # 废弃函数，两个指标 交叉比对，导致不必要的复杂度

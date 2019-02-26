@@ -58,5 +58,5 @@ class db_ops:
             df_ret = pd.DataFrame([list(i) for i in arr_ret], columns=columnNames)
             return df_ret
         else:
-            wx.info("[_exec_sql] failed to exec SQL {}".format(sql))
+            wx.info("[_exec_sql] Empty Dataframe Returned : SQL {}".format(sql))
             return None
