@@ -5,6 +5,7 @@ __pycache__/
 
 .idea/
 *.log
+*.xlsx
 report/
 
 # C extensions

@@ -24,7 +24,7 @@ class ex_web_data(object):
         # self.logger = myLogger(log_dir)
         try:
             self.db = db_ops(host='127.0.0.1', db='stock', user='wx', pwd='5171013')
-            wx.info("[OBJ] ex_web_data : __init__() called")
+            wx.info("[OBJ] ex_web_data : __init__ called")
         except Exception as e:
             raise e
 
@@ -33,7 +33,7 @@ class ex_web_data(object):
         wx = lg.get_handle()
         self.db.cursor.close()
         self.db.handle.close()
-        wx.info("[OBJ] ex_web_data : __del__() called")
+        wx.info("[OBJ] ex_web_data : __del__ called")
 
     def url_encode(self, str):
         return parse.quote(str)

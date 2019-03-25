@@ -11,7 +11,8 @@ class conf_handler():
         conf = os.path.dirname(os.path.abspath(sys.argv[0]))+"\\" + conf
         wx.info("[OBJ] Conf_handler : __init__ called ")
         self.rd = configparser.ConfigParser()
-        self.rd.read(conf)  ##读取配置文件
+        self.rd.read(conf)
+        ##读取配置文件
 
 
     def __del__(self):

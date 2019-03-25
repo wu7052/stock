@@ -4,7 +4,8 @@ import os
 import sys
 import pandas as pd
 from db_package import db_ops
-
+from docx import Document
+from docx.shared import Inches
 
 class ws_rp():
     def __init__(self):
@@ -21,7 +22,50 @@ class ws_rp():
         self.db.handle.close()
         wx.info("[OBJ] ws_rp : __del__() called")
 
-    def output_file(self, dd_df=None, filename='null', sheet_name=None, type='.xlsx', index=False):
+    def output_docx(self, filename = 'null', para_dict = None):
+        wx = lg.get_handle()
+        work_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+        output_path = work_path + '\\report\\'
+        today = date.today().strftime('%Y%m%d')
+        filename = output_path + today + "_" + filename + ".docx"
+
+        # 创建文档对象
+        doc = Document()
+
+        # 设置文档标题，中文要用unicode字符串
+        doc.add_heading(para_dict['title'], 0)
+        para_dict.pop('title')
+
+        for key in para_dict.keys():
+            # 添加一级标题
+            doc.add_heading(key, level=1)
+
+            if para_dict[key].empty:
+                p = doc.add_paragraph('没有数据 ')
+                p.add_run('！ ').bold = True
+                continue
+            df = para_dict[key]
+            # 添加表格
+            table = doc.add_table(rows=df.shape[0]+1, cols=df.shape[1])
+            hdr_cells = table.rows[0].cells
+            col_counter = 0
+            for col_name in df.columns.tolist():
+                hdr_cells[col_counter].text = col_name
+                col_counter += 1
+
+            row_counter = 1
+            for index, row in df.iterrows():
+                col_counter = 0
+                hdr_cells = table.rows[row_counter].cells
+                for col in list(df.columns):
+                    hdr_cells[col_counter].text = str(row[col])
+                    col_counter += 1
+                row_counter += 1
+
+        doc.save(filename)
+        wx.info("[output_docx] {} is outputed ".format(filename))
+
+    def output_table(self, dd_df=None, filename='null', sheet_name=None, type='.xlsx', index=False):
         wx = lg.get_handle()
         work_path = os.path.dirname(os.path.abspath(sys.argv[0]))
         output_path = work_path + '\\report\\'

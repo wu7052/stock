@@ -43,7 +43,7 @@ update_sw_industry_into_basic_info()
 update_daily_data_from_eastmoney(supplement=False)
 
 # 更新当前数据到 指定的日期
-# update_daily_data_from_eastmoney(date= '20190202',supplement=False)
+# update_daily_data_from_eastmoney(date= '20190308',supplement=False)
 
 
 """####################################################################
@@ -73,7 +73,7 @@ update_repo_data_from_eastmoney()
 """####################################################################
 # 大宗交易 ws表中 补充 buy_date, sell_date，调用 mysql 存储过程
 """
-ws_supplement()
+# ws_supplement()
 
 
 """####################################################################
@@ -102,23 +102,29 @@ ws_supplement()
 """
 analysis_dgj()
 analysis_repo()
-# analysis_ws()
+analysis_ws()
 
 """####################################################################
 # 报表输出功能
 """
 # report_total_amount()
-# reporter = ws_rp()
+
+reporter = ws_rp()
+
+id_arr = analysis_summary_list(rp=reporter)
+analysis_single_stock(rp=reporter, id_arr = id_arr)
 
 # 董高监 交易数据，最新100条
-# report_dgj_trading(rp=reporter, limit=100)
+report_dgj_trading(rp=reporter, limit=100)
 
 # 大宗交易 最近N天 个股买入量、均价、最高价、最低价
-# report_ws_price(rp=reporter, days=200)
+report_ws_price(rp=reporter, days=200)
 
 # 最近N天 个股成交量占比 =  累计成交量 / 流动股份
-# report_days_vol(rp=reporter, days=30)
+report_days_vol(rp=reporter, days=30)
 
+
+# 废弃函数
 # 大宗交易 董高监交易 交叉对比
 # report_cross_dgj_ws(rp=reporter, ws_days=180, dgj_days=180)
 

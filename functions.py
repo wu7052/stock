@@ -589,7 +589,7 @@ def report_total_amount():
 def report_days_vol(rp=None, days=0):
     if rp is not None:
         df_days_vol = rp.calc_days_vol(days)
-        rp.output_file(dd_df=df_days_vol, sheet_name='vol_' + str(days) + '_days',
+        rp.output_table(dd_df=df_days_vol, sheet_name='vol_' + str(days) + '_days',
                        filename='volumne_' + str(days) + 'days', type='.xlsx', index=False)
     else:
         return -1
@@ -599,7 +599,7 @@ def report_days_vol(rp=None, days=0):
 def report_ws_price(rp=None, days=180):
     if rp is not None:
         df_price_comparision = rp.ws_price_compare_close_price(days=days, close_date=None)
-        rp.output_file(dd_df=df_price_comparision, sheet_name='大宗交易_' + str(days) + '天统计表',
+        rp.output_table(dd_df=df_price_comparision, sheet_name='大宗交易_' + str(days) + '天统计表',
                        filename='大宗交易_' + str(days) + '天统计表', type='.xlsx', index=False)
     else:
         return -1
@@ -614,7 +614,7 @@ def report_dgj_trading(rp=None, limit=100):
                      'trader_name': '交易人', 'relation': '与高管关系', 'vol': '成交量(股)',
                      'price': '成交价', 'amount': '成交金额', 'pct_chg': '变动比例(%)',
                      'trading_type': '交易方式', 'in_hand': '仍持股量'}, inplace=True)
-        rp.output_file(dd_df=df_dgj, sheet_name='企业高管交易数据',
+        rp.output_table(dd_df=df_dgj, sheet_name='企业高管交易数据',
                        filename='企业高管交易数据', type='.xlsx', index=False)
     else:
         return -1
@@ -631,7 +631,7 @@ def report_repo_completion_data(rp=None):
               "where progress in (006) and end_date > 20180101 " \
               "order by notice_date desc"
         df_repo = rp.db._exec_sql(sql = sql)
-        rp.output_file(dd_df=df_repo, sheet_name= '回购股票', filename='回购股票', type='.xlsx', index=False)
+        rp.output_table(dd_df=df_repo, sheet_name= '回购股票', filename='回购股票', type='.xlsx', index=False)
     else:
         return -1
 
@@ -642,8 +642,14 @@ def analysis_dgj():
     # ana_para = {'dgj_year':[-365,'5000000'], 'dgj_6mon':[-180,'3000000'], 'dgj_3mon':[-90,'1000000'],
     #               'dgj_1mon':[-30,'500000'], 'dgj_2wk':[-14,'100000']}
 
-    ana_matrix = dict(ana.h_conf.rd_sec(sec='ass_dgj_date'))
+    ana_matrix = dict(ana.h_conf.rd_sec(sec='ass_dgj_buy'))
+    for key in ana_matrix.keys():
+        # ana_para[key].append(ana_matrix[key])
+        ana_para = ana_matrix[key].split("#")
+        start_date = (date.today() + timedelta(days=int(ana_para[1]))).strftime('%Y%m%d')
+        ana.ana_dgj_trading(ass_type = key, start_date = start_date, vol=ana_para[2], ass_weight=ana_para[0])
 
+    ana_matrix = dict(ana.h_conf.rd_sec(sec='ass_dgj_sell'))
     for key in ana_matrix.keys():
         # ana_para[key].append(ana_matrix[key])
         ana_para = ana_matrix[key].split("#")
@@ -680,14 +686,42 @@ def analysis_ws():
     start_date = (date.today() + timedelta(days=-550)).strftime('%Y%m%d')
     for key in ana_matrix.keys():
         ana_para = ana_matrix[key].split("#")
-        ana.ana_ws(ass_type=key, start_date = start_date, ass_disc=ana_para[1], ass_weight = ana_para[0])
+        ana.ana_ws(ass_type=key, start_date = start_date, ass_weight = ana_para[0],ass_disc=ana_para[1],
+                   ass_amount=ana_para[2])
 
     #     pass
 
+# @wx_timer
+def analysis_summary_list(rp=None):
+    ana = analyzer()
+    summary_arr= ['repo%','dgj%','disc%']
+    df_list = pd.DataFrame()
+    for item in summary_arr:
+        sql = "select id, name, left('"+item+"', 4) as type , sum(ass_weight) as weight " \
+              "from fruit where ass_type like '"+item+"' group by id, name having sum(ass_weight) > 0 " \
+              "order by sum(ass_weight) desc "
+        df_tmp = ana.db._exec_sql(sql)
+
+        if df_list.empty:
+            df_list = df_tmp
+        else:
+            df_list = pd.merge(df_list, df_tmp, how='inner', on=['id', 'name'])
+
+    rp.output_table(dd_df=df_list, sheet_name="综合分析列表",
+                   filename='综合分析列表', type='.xlsx', index=False)
+    id_arr = df_list['id'].tolist()
+    return id_arr
+
+@wx_timer
+def analysis_single_stock(rp=None, id_arr=None):
+    ana = analyzer()
+    start_date = (date.today() + timedelta(days=-365)).strftime('%Y%m%d')
+    for s_id in id_arr:
+        ret_dict = ana.ana_single_stock(s_id=s_id, start_date=start_date )
+        rp.output_docx(filename = ret_dict['title'], para_dict = ret_dict)
 
 # 废弃函数，两个指标 交叉比对，导致不必要的复杂度
 # 对每个指标 都单独设置权重，然后将对应股票列表导入 fruit 表
-
 
 @wx_timer
 def report_cross_dgj_ws(rp=None, ws_days=180, dgj_days=180):
@@ -705,9 +739,8 @@ def report_cross_dgj_ws(rp=None, ws_days=180, dgj_days=180):
                 '大宗最高买价', '大宗最低买价', '高管最高买价', '高管最低买价',
                 '高管最高卖价', '高管最低卖价']
         df_cross = df_cross[cols]
-        rp.output_file(dd_df=df_cross, sheet_name="大宗" + str(ws_days) + "天-董监高" + str(dgj_days) + "天-收盘价",
+        rp.output_table(dd_df=df_cross, sheet_name="大宗" + str(ws_days) + "天-董监高" + str(dgj_days) + "天-收盘价",
                        filename='大宗-董高监交易-最新收盘价比对', type='.xlsx', index=False)
-        pass
     else:
         return -1
 
