@@ -2,12 +2,16 @@ import tushare as ts
 from datetime import datetime, date, timedelta
 import time
 import new_logger as lg
+from conf import conf_handler
 
 class ts_data:
     __counter = 1
     __timer = 0
     def __init__(self):
-        self.ts= ts.pro_api('9e78306f8bbe893520528008f70653779cc98c5ec88c07340a3b8f18')
+        self.h_conf = conf_handler(conf="stock_analyer.conf")
+        token = self.h_conf.rd_opt('tushare', 'token')
+        self.ts= ts.pro_api(token)
+        # self.ts= ts.pro_api('bbbbd0cec7a9a4c7f8b295c738c6d694877fab8db8f48efe9263385f')
 
     def basic_info(self):
         data = self.ts.stock_basic(exchange='', list_status='L', fields='symbol,name,area,industry,list_date')

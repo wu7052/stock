@@ -14,6 +14,7 @@ import numpy as np
 import json
 from jsonpath import jsonpath
 import re
+from conf import conf_handler
 
 
 class ex_web_data(object):
@@ -23,7 +24,13 @@ class ex_web_data(object):
         # log_dir = os.path.abspath('.')
         # self.logger = myLogger(log_dir)
         try:
-            self.db = db_ops(host='127.0.0.1', db='stock', user='wx', pwd='5171013')
+            self.h_conf = conf_handler(conf="stock_analyer.conf")
+            host = self.h_conf.rd_opt('db', 'host')
+            database = self.h_conf.rd_opt('db', 'database')
+            user = self.h_conf.rd_opt('db', 'user')
+            pwd = self.h_conf.rd_opt('db', 'pwd')
+            self.db = db_ops(host=host, db=database, user=user, pwd=pwd)
+            # self.db = db_ops(host='127.0.0.1', db='stock', user='wx', pwd='5171013')
             wx.info("[OBJ] ex_web_data : __init__ called")
         except Exception as e:
             raise e
@@ -90,6 +97,7 @@ class ex_web_data(object):
             self.db.handle.commit()
         wx.info("SW Industry Code {} updated {} stocks ".format(code, len(id_arr)))
 
+
     def db_load_into_list_a_2(self, basic_info_df):
         wx = lg.get_handle()
         if (basic_info_df is None):
@@ -141,7 +149,7 @@ class ex_web_data(object):
             }
         elif web_flag == 'sh_basic':
             header = {
-                'Cookie': 'yfx_c_g_u_id_10000042=_ck18012900250116338392357618947; VISITED_MENU=%5B%228528%22%5D; yfx_f_l_v_t_10000042=f_t_1517156701630__r_t_1517314287296__v_t_1517320502571__r_c_2',
+                'Cookie': 'yfx_c_g_u_id_10000042=_ck18112210334212135454572121490; yfx_mr_10000042=%3A%3Amarket_type_free_search%3A%3A%3A%3Abaidu%3A%3A%3A%3A%3A%3A%3A%3Awww.baidu.com%3A%3A%3A%3Apmf_from_free_search; yfx_key_10000042=; VISITED_COMPANY_CODE=%5B%22603017%22%2C%22600354%22%2C%22601975%22%2C%22600000%22%5D; VISITED_STOCK_CODE=%5B%22603017%22%2C%22600354%22%2C%22601975%22%2C%22600000%22%5D; seecookie=%5B601975%5D%3AST%u957F%u6CB9%2C%5B600000%5D%3A%u6D66%u53D1%u94F6%u884C; JSESSIONID=CA764F4C8465140437D5F6B868137460; yfx_f_l_v_t_10000042=f_t_1542854022203__r_t_1553650507322__v_t_1553651393256__r_c_23; VISITED_MENU=%5B%229055%22%2C%228536%22%2C%228451%22%2C%228453%22%2C%228454%22%2C%229057%22%2C%229062%22%2C%229056%22%2C%228466%22%2C%228523%22%2C%228528%22%5D',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.119 Safari/537.36',
                 'Referer': 'http://www.sse.com.cn/assortment/stock/list/share/'
             }

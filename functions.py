@@ -1,11 +1,5 @@
-# from logger_package import myLogger
-# from filePackage import MyFile
-# from db_package import db_ops
 from stock_package import ts_data, sz_web_data, sh_web_data, ex_web_data
 from analyzer_package import analyzer
-# from report_package import ws_rp
-# import sys
-# import os
 import pandas as pd
 from datetime import datetime, date, timedelta
 import time
@@ -71,7 +65,10 @@ def update_sz_basic_info():
     finally:
         pass
 
-
+"""
+# 废弃函数，上海证券交易所网站 URL 已变更，需使用 update_sh_basic_info_2() 函数
+# 
+"""
 @wx_timer
 def update_sh_basic_info():
     wx = lg.get_handle()
@@ -109,6 +106,53 @@ def update_sh_basic_info():
                 break
             else:
                 continue
+    except Exception as e:
+        wx.info("[update_sh_basic_info]---{}".format(e))
+    finally:
+        pass
+
+@wx_timer
+def update_sh_basic_info_2():
+    wx = lg.get_handle()
+    sh_data = sh_web_data()
+    industry_dict = {'A': u'农、林、牧、渔业', 'B': u'采矿业', 'C': u'制造业',
+                     'D': u'电力、热力、燃气及水生产和供应业', 'E': u'建筑业',
+                     'F': u'批发和零售业', 'G': u'交通运输、仓储和邮政业',
+                     'H': u'住宿和餐饮业', 'I': u'信息传输、软件和信息技术服务业',
+                     'J': u'金融业', 'K': u'房地产业', 'L': u'租赁和商务服务业',
+                     'M': u'科学研究和技术服务业', 'N': u'水利、环境和公共设施管理业',
+                     'O': u'居民服务、修理和其他服务业', 'P': u'教育',
+                     'Q': u'卫生和社会工作', 'R': u'文化、体育和娱乐业', 'S': '综合'}
+
+    try:
+        # 从Web获取沪市 所有股票的基本信息
+        # 从Json读取 股票代码、名称、总股份、流动股份、上市日期
+        for key in industry_dict.keys():
+            page_counter = 1
+            while True:
+                sh_basic_list_url = 'http://query.sse.com.cn/security/stock/getStockListData.do?&' \
+                                    'jsonCallBack=jsonpCallback99887&isPagination=true&stockCode=&' \
+                                    'csrcCode=' + key + '&areaName=&stockType=1&pageHelp.cacheSize=1&' \
+                                                        'pageHelp.beginPage=' + str(page_counter) + \
+                                    '&pageHelp.pageSize=25&pageHelp.pageNo=' + str(page_counter) + '&_=1556972800071'
+
+                json_str = sh_data.get_json_str(url=sh_basic_list_url, web_flag='sh_basic')
+                json_str = '{"content":' + json_str[19:-1] + '}'
+                sh_basic_info_df = sh_data.basic_info_json_parse(json_str)
+
+                wx.info("Industry:{}---Total Page:{}---{}\n========================================"
+                        .format(industry_dict[key], sh_data.total_page, page_counter))
+                sh_basic_info_df['industry'] = industry_dict[key]
+                sh_basic_info_df['industry_code']= key
+
+                sh_data.db_load_into_list_a_2(sh_basic_info_df)
+
+                page_counter += 1
+                if page_counter > int(sh_data.total_page[0]):
+                    sh_data.total_page.clear()
+                    break
+                else:
+                    continue
     except Exception as e:
         wx.info("[update_sh_basic_info]---{}".format(e))
     finally:

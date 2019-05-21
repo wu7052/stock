@@ -30,7 +30,7 @@ from functions import *
 # 从上证、深证 网站更新 A 股基础信息
 # 从申银万国 更新 行业分类
 """
-update_sh_basic_info()
+update_sh_basic_info_2()
 update_sz_basic_info()
 update_sw_industry_into_basic_info()
 

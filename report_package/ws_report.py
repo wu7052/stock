@@ -133,7 +133,7 @@ class ws_rp():
                 else:
                     df_price_comparision = df_price_comparision.append(sub_df_price)
             else:
-                wx.info("[calc days vol] failed to exec SQL {}".format(sql))
+                wx.info("[ws_price_compare_close_price] failed to exec SQL {}".format(sql))
         return df_price_comparision
 
     def calc_days_vol(self, days=0, limit=10):
