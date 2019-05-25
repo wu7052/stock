@@ -29,8 +29,6 @@ class db_ops:
             raise e
 
 
-
-
     def __del__(self):
         wx = lg.get_handle()
         wx.info("[OBJ] db_ops : __del__ called")

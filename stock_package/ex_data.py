@@ -83,6 +83,37 @@ class ex_web_data(object):
         else:
             return -1
 
+
+    def db_load_into_indicator(self, ma_df=None, type=None):
+        wx = lg.get_handle()
+        if ma_df is None or type is None:
+            wx.info("[db_load_into_indicator] Err: MA Data Frame or Type is Empty,")
+            return -1
+        ma_array = ma_df.values.tolist()
+        i = 0
+        while i < len(ma_array):
+            ma_array[i] = tuple(ma_array[i])
+            i += 1
+
+        tname_00 = self.h_conf.rd_opt('db', 'ma_table_00')
+        tname_30 = self.h_conf.rd_opt('db', 'ma_table_30')
+        tname_60 = self.h_conf.rd_opt('db', 'ma_table_60')
+        tname_002 = self.h_conf.rd_opt('db', 'ma_table_002')
+
+        if re.match('002',type) is not None:
+            t_name = tname_002
+        elif  re.match('00', type) is not None :
+            t_name = tname_00
+        elif re.match('30', type) is not None:
+            t_name = tname_30
+        elif  re.match('60', type) is not None :
+            t_name = tname_60
+
+        sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, ma_5=%s, ema_5=%s, ma_10=%s, ema_10=%s, " \
+                                         "ma_20=%s, ema_20=%s, ma_60=%s, ema_60=%s"
+        self.db.cursor.executemany(sql, ma_array)
+        self.db.handle.commit()
+
     def db_update_sw_industry_into_basic_info(self, code=None, id_arr=None):
         wx = lg.get_handle()
         if code is None or id_arr is None:

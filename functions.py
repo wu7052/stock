@@ -1,11 +1,11 @@
-from stock_package import ts_data, sz_web_data, sh_web_data, ex_web_data
+from stock_package import ts_data, sz_web_data, sh_web_data, ex_web_data, ma_kits
 from analyzer_package import analyzer
 import pandas as pd
 from datetime import datetime, date, timedelta
 import time
 import new_logger as lg
 import re
-
+from conf import conf_handler
 
 # 计时器 装饰器
 def wx_timer(func):
@@ -328,8 +328,16 @@ def update_daily_data_from_ts(period=-1):
 def update_daily_data_from_eastmoney(date=None, supplement=True):
     wx = lg.get_handle()
     web_data = ex_web_data()
-    page_src = (('C._SZAME', 'stock.code_00_201901', '深证 主板'), ('C.13', 'stock.code_002_201901', '中小板'),
-                ('C.80', 'stock.code_30_201901', '创业板'), ('C.2', 'stock.code_60_201901', '上证 主板'))
+    h_conf = conf_handler(conf="stock_analyer.conf")
+    tname_00 = h_conf.rd_opt('db', 'daily_table_00')
+    tname_30 = h_conf.rd_opt('db', 'daily_table_30')
+    tname_60 = h_conf.rd_opt('db', 'daily_table_60')
+    tname_002 = h_conf.rd_opt('db', 'daily_table_002')
+    page_src = (('C._SZAME', tname_00, '深证 主板'), ('C.13', tname_002, '中小板'),
+                ('C.80', tname_30, '创业板'), ('C.2', tname_60, '上证 主板'))
+
+    # page_src = (('C._SZAME', 'stock.code_00_201901', '深证 主板'), ('C.13', 'stock.code_002_201901', '中小板'),
+    #             ('C.80', 'stock.code_30_201901', '创业板'), ('C.2', 'stock.code_60_201901', '上证 主板'))
 
     try:
         for src in page_src:
@@ -585,6 +593,39 @@ def ws_supplement():
         wx.info("update_ws_share_holder succeed !")
     else:
         wx.info("update_ws_share_holder failed !")
+
+
+"""
+# 更新Indicator 表中的 移动均值
+"""
+@wx_timer
+def update_ind_ma(fresh = False):
+    wx = lg.get_handle()
+    web_data = ex_web_data()
+    pre_id=['00%','002%','30%','60%']
+    ma = ma_kits()
+    ma_loaded = pd.DataFrame()
+    for pre in pre_id:
+        id_arr = web_data.db_fetch_stock_id(pre_id = pre)
+        # 全部刷新，每股的数据量较大，每股更新数据库
+        if fresh == True:
+            icount = 1
+            for id in id_arr:
+                ma_ret = ma.calc(stock_id=id[0], fresh=fresh)
+                web_data.db_load_into_indicator(ma_df=ma_ret ,type=pre)
+                wx.info("[update_ind_ma] {} MA data loaded ALL [{}/{}]".format(id[0], icount ,len(id_arr)))
+                icount += 1
+        # 增量更新，一个板块 拼凑一个Dataframe ,统一更新数据库
+        else:
+            icount = 1
+            for id in id_arr:
+                ma_ret = ma.calc(stock_id=id[0], fresh=fresh)
+                ma_loaded = ma_loaded.append(ma_ret,ignore_index=True)
+                wx.info("[update_ind_ma] {} MA data appended [{}/{}]".format(id[0], icount ,len(id_arr)))
+                icount += 1
+
+            web_data.db_load_into_indicator(ma_df=ma_loaded, type=pre)
+            wx.info("[update_ind_ma] ============={} MA data loaded ALL============".format(pre))
 
 
 """

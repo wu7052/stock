@@ -30,9 +30,9 @@ from functions import *
 # 从上证、深证 网站更新 A 股基础信息
 # 从申银万国 更新 行业分类
 """
-update_sh_basic_info_2()
-update_sz_basic_info()
-update_sw_industry_into_basic_info()
+# update_sh_basic_info_2()
+# update_sz_basic_info()
+# update_sw_industry_into_basic_info()
 
 
 """####################################################################
@@ -70,6 +70,15 @@ update_dgj_trading_data_from_eastmoney(force= False)
 update_repo_data_from_eastmoney()
 
 
+"""
+#  计算 收盘价的 移动均值（MA5,10,20,60） 及 指数移动均值（EMA)
+#  fresh = True 从过去 240个交易日 开始计算，并更新相关历史记录；在数据库初始化时使用
+#  fresh = False 增量更新，最近一个交易日的均值
+"""
+update_ind_ma(fresh=False)
+
+
+
 """####################################################################
 # 大宗交易 ws表中 补充 buy_date, sell_date，调用 mysql 存储过程
 """
@@ -100,28 +109,28 @@ update_repo_data_from_eastmoney()
 """
 # 数据分析结果导入fruit表
 """
-analysis_dgj()
-analysis_repo()
-analysis_ws()
+# analysis_dgj()
+# analysis_repo()
+# analysis_ws()
 
 """####################################################################
 # 报表输出功能
 """
 # report_total_amount()
 
-reporter = ws_rp()
-
-id_arr = analysis_summary_list(rp=reporter)
-analysis_single_stock(rp=reporter, id_arr = id_arr)
+# reporter = ws_rp()
+#
+# id_arr = analysis_summary_list(rp=reporter)
+# analysis_single_stock(rp=reporter, id_arr = id_arr)
 
 # 董高监 交易数据，最新100条
-report_dgj_trading(rp=reporter, limit=100)
+# report_dgj_trading(rp=reporter, limit=100)
 
 # 大宗交易 最近N天 个股买入量、均价、最高价、最低价
-report_ws_price(rp=reporter, days=200)
+# report_ws_price(rp=reporter, days=200)
 
 # 最近N天 个股成交量占比 =  累计成交量 / 流动股份
-report_days_vol(rp=reporter, days=30)
+# report_days_vol(rp=reporter, days=30)
 
 
 # 废弃函数
