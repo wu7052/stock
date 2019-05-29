@@ -30,9 +30,9 @@ from functions import *
 # 从上证、深证 网站更新 A 股基础信息
 # 从申银万国 更新 行业分类
 """
-# update_sh_basic_info_2()
-# update_sz_basic_info()
-# update_sw_industry_into_basic_info()
+update_sh_basic_info_2()
+update_sz_basic_info()
+update_sw_industry_into_basic_info()
 
 
 """####################################################################
@@ -78,6 +78,12 @@ update_repo_data_from_eastmoney()
 update_ind_ma(fresh=False)
 
 
+"""
+#  计算 心理线
+#  fresh = True 从过去 60个交易日 开始计算，并更新相关历史记录；在数据库初始化时使用
+#  fresh = False 增量更新，最近一个交易日的均值
+"""
+update_ind_psy(fresh = False)
 
 """####################################################################
 # 大宗交易 ws表中 补充 buy_date, sell_date，调用 mysql 存储过程

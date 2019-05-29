@@ -1,4 +1,4 @@
-from stock_package import ts_data, sz_web_data, sh_web_data, ex_web_data, ma_kits
+from stock_package import ts_data, sz_web_data, sh_web_data, ex_web_data, ma_kits, psy_kits
 from analyzer_package import analyzer
 import pandas as pd
 from datetime import datetime, date, timedelta
@@ -596,7 +596,7 @@ def ws_supplement():
 
 
 """
-# 更新Indicator 表中的 移动均值
+# 更新Indicator MA 表 移动均值
 """
 @wx_timer
 def update_ind_ma(fresh = False):
@@ -612,7 +612,7 @@ def update_ind_ma(fresh = False):
             icount = 1
             for id in id_arr:
                 ma_ret = ma.calc(stock_id=id[0], fresh=fresh)
-                web_data.db_load_into_indicator(ma_df=ma_ret ,type=pre)
+                web_data.db_load_into_ind_xxx(ind_type='ma' ,ind_df=ma_ret ,stock_type=pre)
                 wx.info("[update_ind_ma] {} MA data loaded ALL [{}/{}]".format(id[0], icount ,len(id_arr)))
                 icount += 1
         # 增量更新，一个板块 拼凑一个Dataframe ,统一更新数据库
@@ -624,15 +624,52 @@ def update_ind_ma(fresh = False):
                 wx.info("[update_ind_ma] {} MA data appended [{}/{}]".format(id[0], icount ,len(id_arr)))
                 icount += 1
 
-            web_data.db_load_into_indicator(ma_df=ma_loaded, type=pre)
+            web_data.db_load_into_ind_xxx(ind_type='ma' ,ind_df=ma_loaded, stock_type=pre)
             wx.info("[update_ind_ma] ============={} MA data loaded ALL============".format(pre))
+
+
+"""
+# 更新Indicator PSY 表 移动均值
+"""
+@wx_timer
+def update_ind_psy(fresh = False):
+    wx = lg.get_handle()
+    web_data = ex_web_data()
+    pre_id=['00%','002%','30%','60%']
+    psy = psy_kits()
+    # np_cprice = psy.get_cprice(stock_id="600000")
+    # psy.calc(np_cprice)
+    for pre in pre_id:
+        id_arr = web_data.db_fetch_stock_id(pre_id = pre)
+        # 全部刷新，每股的数据量较大，每股更新数据库
+        if fresh == True:
+            icount = 1
+            for id in id_arr:
+                np_cprice = psy.get_cprice(stock_id=id[0])
+                df_psy = psy.calc(np_cprice, fresh=True)
+                if df_psy is not None:
+                    web_data.db_load_into_ind_xxx(ind_type='psy' ,ind_df=df_psy, stock_type=pre)
+                    wx.info("[update_ind_psy] {} PSY data loaded ALL [{}/{}]".format(id[0], icount ,len(id_arr)))
+                else:
+                    wx.info("[update_ind_psy] {} PSY data Empty, go next... [{}/{}]".format(id[0], icount ,len(id_arr)))
+                icount += 1
+        # 增量更新，一个板块 拼凑一个Dataframe ,统一更新数据库
+        else:
+            icount = 1
+            for id in id_arr:
+                np_cprice = psy.get_cprice(stock_id=id[0])
+                df_psy = psy.calc(np_cprice, fresh=False)
+                wx.info("[update_ind_psy] {} PSY data appended [{}/{}]".format(id[0], icount ,len(id_arr)))
+                icount += 1
+
+            web_data.db_load_into_ind_xxx(ind_type='psy' ,ind_df=df_psy, stock_type=pre)
+            wx.info("[update_ind_psy] ============={} PSY loaded ALL============".format(pre))
+
 
 
 """
 # 使用全部刷新的方式，因为个股的回购状态更新，逐项比对更麻烦
 """
-
-
 @wx_timer
 def update_repo_data_from_eastmoney():
     wx = lg.get_handle()

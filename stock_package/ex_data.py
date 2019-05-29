@@ -83,36 +83,48 @@ class ex_web_data(object):
         else:
             return -1
 
+    """
+    #  插入 指标表 
+    #  ind_type = 'ma' 移动均线 ； 'psy' 心理线
+    """
 
-    def db_load_into_indicator(self, ma_df=None, type=None):
+    def db_load_into_ind_xxx(self, ind_type='ma', ind_df=None, stock_type=None):
         wx = lg.get_handle()
-        if ma_df is None or type is None:
-            wx.info("[db_load_into_indicator] Err: MA Data Frame or Type is Empty,")
+        if ind_df is None or stock_type is None:
+            wx.info("[db_load_into_ind_xxx] Err: {} Data Frame or Stock Type is Empty,".format(ind_type))
             return -1
-        ma_array = ma_df.values.tolist()
+        ind_arry = ind_df.values.tolist()
         i = 0
-        while i < len(ma_array):
-            ma_array[i] = tuple(ma_array[i])
+        while i < len(ind_arry):
+            ind_arry[i] = tuple(ind_arry[i])
             i += 1
 
-        tname_00 = self.h_conf.rd_opt('db', 'ma_table_00')
-        tname_30 = self.h_conf.rd_opt('db', 'ma_table_30')
-        tname_60 = self.h_conf.rd_opt('db', 'ma_table_60')
-        tname_002 = self.h_conf.rd_opt('db', 'ma_table_002')
+        tname_00 = self.h_conf.rd_opt('db', ind_type+'_table_00')
+        tname_30 = self.h_conf.rd_opt('db', ind_type+'_table_30')
+        tname_60 = self.h_conf.rd_opt('db', ind_type+'_table_60')
+        tname_002 = self.h_conf.rd_opt('db', ind_type+'_table_002')
 
-        if re.match('002',type) is not None:
+        if re.match('002',stock_type) is not None:
             t_name = tname_002
-        elif  re.match('00', type) is not None :
+        elif  re.match('00', stock_type) is not None :
             t_name = tname_00
-        elif re.match('30', type) is not None:
+        elif re.match('30', stock_type) is not None:
             t_name = tname_30
-        elif  re.match('60', type) is not None :
+        elif  re.match('60', stock_type) is not None :
             t_name = tname_60
+        else:
+            wx.info("[db_load_into_ind_xxx] stock_type does NOT match ('002','00','30','60')")
 
-        sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, ma_5=%s, ema_5=%s, ma_10=%s, ema_10=%s, " \
-                                         "ma_20=%s, ema_20=%s, ma_60=%s, ema_60=%s"
-        self.db.cursor.executemany(sql, ma_array)
+        if (ind_type == 'ma'):
+            sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, ma_5=%s, ma_10=%s, ma_20=%s, ma_60=%s, " \
+                                             "ema_12=%s, ema_26=%s, DIF=%s, DEA=%s"
+        elif (ind_type == 'psy'):
+            sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, psy=%s"
+        else:
+            return None
+        self.db.cursor.executemany(sql, ind_arry)
         self.db.handle.commit()
+
 
     def db_update_sw_industry_into_basic_info(self, code=None, id_arr=None):
         wx = lg.get_handle()
@@ -523,7 +535,7 @@ class ex_web_data(object):
             return None
         id = jsonpath(json_obj, '$..dim_scode')
         name = jsonpath(json_obj, '$..securityshortname')
-        notice_date_stamp = jsonpath(json_obj, '$..shmrsltnoticedate')
+        notice_date_stamp = jsonpath(json_obj, '$..updatedate')
         notice_date = self._datestamp_to_srt(notice_date_stamp)
         start_date_stamp = jsonpath(json_obj, '$..repurstartdate')
         start_date = self._datestamp_to_srt(start_date_stamp)

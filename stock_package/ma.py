@@ -13,6 +13,9 @@ class ma_kits(object):
         self.h_conf = conf_handler(conf="stock_analyer.conf")
         ma_str = self.h_conf.rd_opt('ma', 'duration')
         self.ma_duration = ma_str.split(",")
+
+        ema_str = self.h_conf.rd_opt('ema', 'duration')
+        self.ema_duration = ema_str.split(",")
         # wx.info("ma_duration {}".format(self.ma_duration))
 
         host = self.h_conf.rd_opt('db', 'host')
@@ -42,10 +45,21 @@ class ma_kits(object):
         sql = "select id, date, close from " + t_name + " where id = " + stock_id + " order by date desc limit 240"
         df_ma = self.db._exec_sql(sql)
         df_ma.sort_values(by='date', ascending=True, inplace=True)
+
+        # MA 5 10 20 60 移动均值
         for duration in self.ma_duration:
             # df_ma['MA_' + duration] = pd.rolling_mean(df_ma['close'], int(duration))
             df_ma['MA_' + duration] = df_ma['close'].rolling(int(duration)).mean()
+
+        # EMA 12 26 指数移动均值
+        for duration in self.ema_duration:
             df_ma['EMA_' + duration] = df_ma['close'].ewm(span=int(duration)).mean()
+
+        # MACD 快线
+        df_ma['DIF'] = df_ma['EMA_' + self.ema_duration[0]] - df_ma['EMA_' + self.ema_duration[1]]
+
+        # MACD 慢线
+        df_ma['DEA'] = df_ma['DIF'].ewm(span=9).mean()
 
         df_ma.drop(columns=['close'], inplace= True)
         df_ma.dropna(axis=0, how="any", inplace=True)
