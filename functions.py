@@ -333,8 +333,8 @@ def update_daily_data_from_eastmoney(date=None, supplement=True):
     tname_30 = h_conf.rd_opt('db', 'daily_table_30')
     tname_60 = h_conf.rd_opt('db', 'daily_table_60')
     tname_002 = h_conf.rd_opt('db', 'daily_table_002')
-    page_src = (('C._SZAME', tname_00, '深证 主板'), ('C.13', tname_002, '中小板'),
-                ('C.80', tname_30, '创业板'), ('C.2', tname_60, '上证 主板'))
+    page_src = (('C.2', tname_60, '上证 主板'),('C._SZAME', tname_00, '深证 主板'), ('C.13', tname_002, '中小板'),
+                ('C.80', tname_30, '创业板') )
 
     # page_src = (('C._SZAME', 'stock.code_00_201901', '深证 主板'), ('C.13', 'stock.code_002_201901', '中小板'),
     #             ('C.80', 'stock.code_30_201901', '创业板'), ('C.2', 'stock.code_60_201901', '上证 主板'))
@@ -596,7 +596,24 @@ def ws_supplement():
 
 
 """
-# 更新Indicator MA 表 移动均值
+# 更新Indicator MA 表 移动均值, 批量更新，减少数据库访问
+"""
+@wx_timer
+def update_ind_ma_2(fresh = False):
+    wx = lg.get_handle()
+    web_data = ex_web_data()
+    pre_id=['60%','002%','30%','00%']
+    ma = ma_kits()
+    for pre in pre_id:
+        id_arr = web_data.db_fetch_stock_id(pre_id = pre)
+        ma_ret = ma.calc_arr(stock_arr=id_arr, fresh=fresh)
+        web_data.db_load_into_ind_xxx(ind_type='ma' ,ind_df=ma_ret ,stock_type=pre)
+        wx.info("[update_ind_ma]=========== {} MA =========== Data Loaded ALL [{}]".format(pre, len(id_arr)))
+
+
+"""
+# 废弃函数，太慢了
+# 更新Indicator MA 表 移动均值, 逐条更新，速度较慢
 """
 @wx_timer
 def update_ind_ma(fresh = False):
@@ -626,6 +643,51 @@ def update_ind_ma(fresh = False):
 
             web_data.db_load_into_ind_xxx(ind_type='ma' ,ind_df=ma_loaded, stock_type=pre)
             wx.info("[update_ind_ma] ============={} MA data loaded ALL============".format(pre))
+
+
+"""
+# 更新Indicator PSY 表 ，批量更新，减少数据库访问次数
+"""
+@wx_timer
+def update_ind_psy_2(fresh = False):
+    wx = lg.get_handle()
+    web_data = ex_web_data()
+    pre_id=['00%','002%','30%','60%']
+    psy = psy_kits()
+    # np_cprice = psy.get_cprice(stock_id="600000")
+    # psy.calc(np_cprice)
+    for pre in pre_id:
+        id_arr = web_data.db_fetch_stock_id(pre_id = pre)
+        df_psy = psy.calc_arr(stock_arr= id_arr, fresh = True)
+
+        # 全部刷新，每股的数据量较大，每股更新数据库
+        if fresh == True:
+            icount = 1
+            for id in id_arr:
+                np_cprice = psy.get_cprice(stock_id=id[0])
+                df_psy = psy.calc(np_cprice, fresh=True)
+                if df_psy is not None:
+                    web_data.db_load_into_ind_xxx(ind_type='psy' ,ind_df=df_psy, stock_type=pre)
+                    wx.info("[update_ind_psy] {} PSY data loaded ALL [{}/{}]".format(id[0], icount ,len(id_arr)))
+                else:
+                    wx.info("[update_ind_psy] {} PSY data Empty, go next... [{}/{}]".format(id[0], icount ,len(id_arr)))
+                icount += 1
+        # 增量更新，一个板块 拼凑一个Dataframe ,统一更新数据库
+        else:
+            icount = 1
+            for id in id_arr:
+                np_cprice = psy.get_cprice(stock_id=id[0])
+                df_psy = psy.calc(np_cprice, fresh=False)
+                wx.info("[update_ind_psy] {} PSY data appended [{}/{}]".format(id[0], icount ,len(id_arr)))
+                icount += 1
+
+            web_data.db_load_into_ind_xxx(ind_type='psy' ,ind_df=df_psy, stock_type=pre)
+            wx.info("[update_ind_psy] ============={} PSY loaded ALL============".format(pre))
+
+
+
+
+
 
 
 """

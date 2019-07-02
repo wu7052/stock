@@ -117,13 +117,19 @@ class ex_web_data(object):
 
         if (ind_type == 'ma'):
             sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, ma_5=%s, ma_10=%s, ma_20=%s, ma_60=%s, " \
-                                             "ema_12=%s, ema_26=%s, DIF=%s, DEA=%s"
+                                             "ma_13=%s, ma_34=%s, ma_55=%s, ema_12=%s, ema_26=%s, DIF=%s, DEA=%s, " \
+                                             "bolling_mid=%s, bolling_top=%s, bolling_bottom=%s"
         elif (ind_type == 'psy'):
             sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, psy=%s"
         else:
             return None
-        self.db.cursor.executemany(sql, ind_arry)
-        self.db.handle.commit()
+
+        i_scale = 1000
+        for i in range(0, len(ind_arry), i_scale):
+            tmp_arry = ind_arry[i : i+i_scale]
+            print("[%s] Loaded %d ~ %d , total %d " % (t_name, i, i + i_scale, len(ind_arry)))
+            self.db.cursor.executemany(sql, tmp_arry)
+            self.db.handle.commit()
 
 
     def db_update_sw_industry_into_basic_info(self, code=None, id_arr=None):

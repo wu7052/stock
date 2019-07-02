@@ -30,9 +30,9 @@ from functions import *
 # 从上证、深证 网站更新 A 股基础信息
 # 从申银万国 更新 行业分类
 """
-update_sh_basic_info_2()
-update_sz_basic_info()
-update_sw_industry_into_basic_info()
+# update_sh_basic_info_2()
+# update_sz_basic_info()
+# update_sw_industry_into_basic_info()
 
 
 """####################################################################
@@ -43,7 +43,13 @@ update_sw_industry_into_basic_info()
 update_daily_data_from_eastmoney(supplement=False)
 
 # 更新当前数据到 指定的日期
-# update_daily_data_from_eastmoney(date= '20190308',supplement=False)
+# update_daily_data_from_eastmoney(date= '20190606',supplement=False)
+
+
+"""####################################################################
+# 从tushare 获取前一天的 交易数据
+"""
+# update_daily_data_from_ts(period = -11)
 
 
 """####################################################################
@@ -53,7 +59,7 @@ update_daily_data_from_eastmoney(supplement=False)
 # update_ws_share_holder 更新 share_holder 表的汇总数据
 """
 update_whole_sales_data_from_eastmoney(force=False)
-update_ws_share_holder()
+# update_ws_share_holder()
 
 
 """####################################################################
@@ -75,7 +81,7 @@ update_repo_data_from_eastmoney()
 #  fresh = True 从过去 240个交易日 开始计算，并更新相关历史记录；在数据库初始化时使用
 #  fresh = False 增量更新，最近一个交易日的均值
 """
-update_ind_ma(fresh=False)
+update_ind_ma_2(fresh=False)
 
 
 """
@@ -83,7 +89,7 @@ update_ind_ma(fresh=False)
 #  fresh = True 从过去 60个交易日 开始计算，并更新相关历史记录；在数据库初始化时使用
 #  fresh = False 增量更新，最近一个交易日的均值
 """
-update_ind_psy(fresh = False)
+# update_ind_psy(fresh = False)
 
 """####################################################################
 # 大宗交易 ws表中 补充 buy_date, sell_date，调用 mysql 存储过程
@@ -105,11 +111,6 @@ update_ind_psy(fresh = False)
 """
 # get_list_a_total_amount()
 
-
-"""####################################################################
-# 从tushare 获取前一天的 交易数据
-"""
-# update_daily_data_from_ts(period = -1)
 
 
 """

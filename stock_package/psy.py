@@ -8,10 +8,13 @@ import pandas as pd
 class psy_kits(object):
     def __init__(self):
         # period is the length of days in which we look at how many days witness price increase
-        # wx = lg.get_handle()
         self.h_conf = conf_handler(conf="stock_analyer.conf")
         self.period = int(self.h_conf.rd_opt('psy', 'period'))
-        # self.ma_duration = ma_str.split(",")
+
+        self.tname_00 = self.h_conf.rd_opt('db', 'daily_table_00')
+        self.tname_30 = self.h_conf.rd_opt('db', 'daily_table_30')
+        self.tname_60 = self.h_conf.rd_opt('db', 'daily_table_60')
+        self.tname_002 = self.h_conf.rd_opt('db', 'daily_table_002')
 
         host = self.h_conf.rd_opt('db', 'host')
         database = self.h_conf.rd_opt('db', 'database')
@@ -71,3 +74,22 @@ class psy_kits(object):
         if fresh == False:
             df_psy = df_psy.iloc[-1:]  # 选取DataFrame最后一行，返回的是DataFrame
         return df_psy
+
+
+    def calc_arr(self, stock_arr = None, fresh = False):
+        wx = lg.get_handle()
+        if stock_arr is None:
+            wx.info("[Class PSY_kits Calc_arr] stock_arr is Empty, Wrong & Return")
+            return None
+
+        if re.match('002', stock_arr[0][0]) is not None:
+            t_name = self.tname_002
+        elif re.match('00', stock_arr[0][0]) is not None:
+            t_name = self.tname_00
+        elif re.match('30', stock_arr[0][0]) is not None:
+            t_name = self.tname_30
+        elif re.match('60', stock_arr[0][0]) is not None:
+            t_name = self.tname_60
+        else:
+            wx.info("[Class PSY_kits: Calc_arr] failed to identify the Stock_id {}".format(stock_arr[0][0]))
+            return None
