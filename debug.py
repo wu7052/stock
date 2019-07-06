@@ -37,7 +37,7 @@ df_target = pd.merge(df_target, df_high_price_grp)
 wx.info("[Filter_A Completed] {} founded".format(len(df_target)))
 """
 
-filter_a.filter_strength()
+filter_a.filter_side()
 
 from functions import *
 # from conf import conf_handler
