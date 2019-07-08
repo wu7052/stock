@@ -38,7 +38,7 @@ def _init_():
         'filters': {},
         'handlers': {
             'console': {
-                'level': 'INFO',
+                'level': 'DEBUG',
                 'class': 'logging.StreamHandler',  # 打印到屏幕
                 'formatter': 'simple'
             },

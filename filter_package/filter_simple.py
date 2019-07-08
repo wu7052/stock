@@ -19,9 +19,11 @@ class filter_fix:
             self.high_price = self.h_conf.rd_opt('filter_fix', 'high_price')
             self.days = self.h_conf.rd_opt('filter_fix', 'below_ma55_days')
             self.filter_growth_below_pct = self.h_conf.rd_opt('filter_fix', 'filter_growth_below_pct')
-            self.filter_left_power_request = self.h_conf.rd_opt('filter_fix', 'filter_left_power_request')
-            self.filter_right_power_request = self.h_conf.rd_opt('filter_fix', 'filter_right_power_request')
+            self.filter_high_left_power_request = self.h_conf.rd_opt('filter_fix', 'filter_high_left_power_request')
+            self.filter_high_right_power_request = self.h_conf.rd_opt('filter_fix', 'filter_high_right_power_request')
+            self.filter_cur_left_power_request = self.h_conf.rd_opt('filter_fix', 'filter_cur_left_power_request')
             self.filter_golden_pct = self.h_conf.rd_opt('filter_fix', 'filter_golden_pct')
+            self.filter_golden_pct_request = float(self.h_conf.rd_opt('filter_fix', 'filter_golden_pct_request'))
 
             self.daily_t_00 = self.h_conf.rd_opt('db', 'daily_table_00')
             self.daily_t_30 = self.h_conf.rd_opt('db', 'daily_table_30')
@@ -156,17 +158,17 @@ class filter_fix:
         high = df_side_left['high'].max()
         low_left = df_side_left['low'].min()
         if (high / low_left - 1) <= float(self.filter_growth_below_pct):
-            return 0
+            return 0  # 不满足最小涨幅的要求
 
         # 判断 右侧是否创新低，条件低于 左侧低点 3%
         low_right = df_side_right['low'].min()
         if low_right  < low_left * 0.97:
-            return -1
+            return -1 # 右侧创新低，不满足要求
 
-        return 1
+        return 1  # 选中，满足要求
 
     """
-    函数说明：处理 单个股票 左侧 或 右侧的数据，根据规则过滤后，返回 数组[left_power，right_power]
+    函数说明：处理 单个股票 左侧 或 右侧的数据，根据规则过滤后，返回 数组[left_power，cur_left_power]
     """
 
     def _filter_strength(self, df_side_left=None, df_side_right=None):
@@ -179,7 +181,6 @@ class filter_fix:
             wx.info("[Filter Fix] filter_Right_Side DataFrame is Empty")
             return None
 
-
         # 按日期排序，由小到大
         df_side_left = df_side_left.sort_values('date', ascending=False).copy()
         df_side_right = df_side_right.sort_values('date', ascending=False).copy()
@@ -191,37 +192,37 @@ class filter_fix:
         df_side_right['pct_chg_int'] = df_side_right['pct_chg'].astype(int).copy()
         df_side_right.loc[df_side_right[(df_side_right['pct_chg'] >= 11)].index, ['pct_chg_int']] = 0
 
-        # 读取 左侧 涨幅的权重表
-        left_power_conf = dict(self.h_conf.rd_sec(sec='filter_left_power_table'))
+        # 读取 高点左侧 涨幅的权重表
+        high_left_power_conf = dict(self.h_conf.rd_sec(sec='filter_high_left_power_table'))
         zero_power_table = dict(zip(range(-10, 11), [0] * 21))  # 从 -10% 到 10% 全部权重为0
-        left_power = 0
-        for key in left_power_conf.keys():
-            power_item = left_power_conf[key].split("#")
+        high_left_power = 0
+        for key in high_left_power_conf.keys():
+            power_item = high_left_power_conf[key].split("#")
             k = [int(x) for x in power_item[0].split(",")]
             v = [int(x) for x in power_item[1].split(",")]
             real_power_table = zero_power_table.copy()
             real_power_table.update(dict(zip(k, v)))  # 从配置文件读取权重，赋值
-            left_power_conf[key] = real_power_table.copy()
+            high_left_power_conf[key] = real_power_table.copy()
 
             # Key 是天数，作为统计周期，获得这个周期内的交易数据
             df_lastest_side = df_side_left.head(int(key))
             pct_count = dict(df_lastest_side['pct_chg_int'].value_counts())
 
-            # 获得这个周期内的 left_power 得分
+            # 获得这个周期内的 high_left_power 得分
             for key in pct_count.keys():
-                left_power += pct_count[key] * real_power_table[key]
+                high_left_power += pct_count[key] * real_power_table[key]
 
-        # 读取 右侧 涨幅的权重表
-        right_power_conf = dict(self.h_conf.rd_sec(sec='filter_right_power_table'))
+        # 读取 最新交易日 左侧 涨幅的权重表
+        cur_left_power_conf = dict(self.h_conf.rd_sec(sec='filter_cur_left_power_table'))
         zero_power_table = dict(zip(range(-10, 11), [0] * 21))  # 从 -10% 到 10% 全部权重为0
-        right_power = 0
-        for key in right_power_conf.keys():
-            power_item = right_power_conf[key].split("#")
+        cur_left_power = 0
+        for key in cur_left_power_conf.keys():
+            power_item = cur_left_power_conf[key].split("#")
             k = [int(x) for x in power_item[0].split(",")]
             v = [int(x) for x in power_item[1].split(",")]
             real_power_table = zero_power_table.copy()
             real_power_table.update(dict(zip(k, v)))  # 从配置文件读取权重，赋值
-            right_power_conf[key] = real_power_table.copy()
+            cur_left_power_conf[key] = real_power_table.copy()
 
             # Key 是天数，作为统计周期，获得这个周期内的交易数据
             df_lastest_side = df_side_right.head(int(key))
@@ -229,9 +230,30 @@ class filter_fix:
 
             # 获得这个周期内的 left_power 得分
             for key in pct_count.keys():
-                right_power += pct_count[key] * real_power_table[key]
+                cur_left_power += pct_count[key] * real_power_table[key]
 
-        ret_arr_power = [left_power, right_power]
+        # 读取 高点右侧 涨幅的权重表
+        high_right_power_conf = dict(self.h_conf.rd_sec(sec='filter_high_right_power_table'))
+        zero_power_table = dict(zip(range(-10, 11), [0] * 21))  # 从 -10% 到 10% 全部权重为0
+        high_right_power = 0
+        for key in high_right_power_conf.keys():
+            power_item = high_right_power_conf[key].split("#")
+            k = [int(x) for x in power_item[0].split(",")]
+            v = [int(x) for x in power_item[1].split(",")]
+            real_power_table = zero_power_table.copy()
+            real_power_table.update(dict(zip(k, v)))  # 从配置文件读取权重，赋值
+            high_right_power_conf[key] = real_power_table.copy()
+
+            # Key 是天数，作为统计周期，获得这个周期内的交易数据
+            df_lastest_side = df_side_right.tail(int(key))
+            pct_count = dict(df_lastest_side['pct_chg_int'].value_counts())
+
+            # 获得这个周期内的 left_power 得分
+            for key in pct_count.keys():
+                high_right_power += pct_count[key] * real_power_table[key]
+
+
+        ret_arr_power = [high_left_power, high_right_power, cur_left_power]
         return ret_arr_power
         # df_high = df_side_left.sort_values('high', ascending=False).groupby('id', as_index=False).first()
         # df_low = df_side_left.sort_values('low', ascending=True).groupby('id', as_index=False).first()
@@ -242,8 +264,6 @@ class filter_fix:
     """
 
     def _filter_golden_price(self, df_right_side=None):
-        wx = lg.get_handle()
-
         golden_pct = [float(x) for x in self.filter_golden_pct.split("#")]
 
         # 右侧最高、最低价格，计算黄金分割线
@@ -251,8 +271,8 @@ class filter_fix:
         low_right = df_right_side['low'].min()
         diff = high - low_right
 
-        close = df_right_side.loc[df_right_side[(df_right_side['date'] == self.date)].index, 'close']
-        close = close.values[0]
+        # close = df_right_side.loc[df_right_side[(df_right_side['date'] == self.date)].index, 'close']
+        close = df_right_side.tail(1)['close'].values[0]
         min_golden_pct = 0
         for pct in golden_pct:
             gold_price = high- diff*pct
@@ -271,18 +291,18 @@ class filter_fix:
     def filter_side(self):
         wx = lg.get_handle()
         start_date = (date.today() + timedelta(days=-180)).strftime('%Y%m%d')
-        tname_arr = [self.daily_t_00]#, self.daily_t_30, self.daily_t_60, self.daily_t_002]
+        tname_arr = [self.daily_t_00, self.daily_t_30, self.daily_t_60, self.daily_t_002]
         arr_filter_side = []
         for t_name in tname_arr:
             sql = "select id, date, high, low, close, 100*(close-pre_close)/pre_close as pct_chg from " + t_name + \
                   " where date >  " + start_date
 
-            # sql = "select id, date, high, low, close, 100*(close-pre_close)/pre_close as pct_chg from "+ self.daily_t_00 +" where id = 000042 and date >  " + start_date
+            # sql = "select id, date, high, low, close, 100*(close-pre_close)/pre_close as pct_chg from "+ self.daily_t_30 +" where id = 300576 and date >  " + start_date
 
             df_all_tmp = self.db._exec_sql(sql=sql)
             df_all = df_all_tmp[-df_all_tmp.high.isin([0])]
             df_high = df_all.sort_values('high', ascending=False).groupby('id', as_index=False).first()
-            wx.info("[Filter Fix] Completed Located the Highest Price Point in {}".format(t_name))
+            wx.info("[Filter] Completed Located the Highest Price Point in {}".format(t_name))
             # df_left_side = df_all.groupby(['id']).apply(lambda x: self._find_left(x, df_high))
 
             df_groupby_id = df_all.groupby(['id'])
@@ -298,44 +318,64 @@ class filter_fix:
                 # 判断 右侧是否 创新低，条件低于左侧 3%
                 ret_LR = self._filter_LR(df_side_left=df_tmp_left, df_side_right=df_tmp_right)
                 if ret_LR == 1:
-                    wx.info("[Filter Fix] {} / {} Filter {} LR ... [LR FOUND!!!] ".format(count + 1, len(df_groupby_id),
+                    wx.info("[Filter LR] {} / {} Filter {} LR ... [LR FOUND!!!] ".format(count + 1, len(df_groupby_id),
                                                                                           df_each_stock[0]))
                 elif ret_LR == 0:
-                    wx.info("[Filter Fix] {} / {} Filter {} Left Raise Low... [LR PASS] ".format(count + 1,  len(df_groupby_id),
+                    wx.info("[Filter LR] {} / {} Filter {} Left Raise Low... [LR PASS] ".format(count + 1,  len(df_groupby_id),
                                                                                                  df_each_stock[0]))
                     continue
                 elif ret_LR == -1:
-                    wx.info("[Filter Fix] {} / {} Filter {} Right New Lowest ... [LR PASS] ".format(count + 1, len(df_groupby_id),
+                    wx.info("[Filter LR] {} / {} Filter {} Right New Lowest ... [LR PASS] ".format(count + 1, len(df_groupby_id),
                                                                                       df_each_stock[0]))
                     continue
 
-                # 根据规则过滤 左侧\右侧
+                # 计算该股票 收盘价 接近的最小黄金分割比例
+                min_golden_pct = self._filter_golden_price(df_right_side=df_tmp_right)
+                if min_golden_pct > self.filter_golden_pct_request:
+                    wx.info("[Filter Golden] {} / {} Filter {}  ........ [Golden PCT FOUND!!!] ".format(count + 1,
+                                                                                                len(df_groupby_id),
+                                                                                                df_each_stock[0]))
+                else:
+                    wx.info("[Filter Golden] {} / {} Filter {}  ........ [Golden PCT PASS] ".format(count + 1,
+                                                                                                len(df_groupby_id),
+                                                                                                df_each_stock[0]))
+                    continue
+
+                # 根据规则过滤 高点左侧\右侧 、
                 arr_power = self._filter_strength(df_side_left=df_tmp_left, df_side_right=df_tmp_right)
 
                 # wx.info("{}:{}".format(df_each_stock[0],arr_power))
                 # 配置文件中所有周期的 Power 得分累计
-                if arr_power[0] < int(self.filter_left_power_request):
-                    wx.info("[Filter Fix] {} / {} Filter {} Left Side ... [Power PASS] ".format(count + 1, len(df_groupby_id),
-                                                                                          df_each_stock[0]))
+                if arr_power[0] < int(self.filter_high_left_power_request):
+                    wx.info("[Filter Power] {} / {} Filter {} High Left Side ... [Power PASS] ".format(count + 1,
+                                                                                                len(df_groupby_id),
+                                                                                                df_each_stock[0]))
                     continue
-                elif arr_power[1] < int(self.filter_right_power_request):
+                elif arr_power[1] < int(self.filter_high_right_power_request):
+                    wx.info("[Filter Power] {} / {} Filter {} High Right Side ... [Power PASS] ".format(count + 1,
+                                                                                                len(df_groupby_id),
+                                                                                                df_each_stock[0]))
+                    continue
+                elif arr_power[2] < int(self.filter_cur_left_power_request):
                     wx.info(
-                        "[Filter Fix] {} / {} Filter {} Right Side ... [Power PASS] ".format(count + 1, len(df_groupby_id),
-                                                                                       df_each_stock[0]))
+                        "[Filter Power] {} / {} Filter {} Cur Left Side ... [Power PASS] ".format(count + 1,
+                                                                                            len(df_groupby_id),
+                                                                                            df_each_stock[0]))
                     continue
                 else:
-                    wx.info("[Filter Fix] {} / {} Filter {} Both Side ............. [Power FOUND!] ".format(count + 1,
-                                                                                                      len(
-                                                                                                          df_groupby_id),
-                                                                                                      df_each_stock[0]))
+                    wx.info("[Filter Power] {} / {} Filter {} Strength ........ [Power FOUND!] ".format(count + 1,
+                                                                                                len(df_groupby_id),
+                                                                                                df_each_stock[0]))
                 arr_power.insert(0, df_each_stock[0])
 
-                # 计算该股票 收盘价 接近的最小黄金分割比例
-                min_golden_pct = self._filter_golden_price(df_right_side=df_tmp_right)
                 arr_power.append(min_golden_pct)
                 arr_filter_side.append(arr_power)
 
-        df_filter_side = pd.DataFrame(arr_filter_side, columns=['股票代码', '高点左侧得分', '今日左侧得分', '收盘价低于'])
+        df_filter_side = pd.DataFrame(arr_filter_side, columns=['股票代码', '高点左侧得分', '高点右侧得分','今日左侧得分', '收盘价低于(高低点黄金比例)'])
+        df_filter_side['得分合计'] = df_filter_side['高点左侧得分'] + df_filter_side['高点右侧得分'] + df_filter_side['今日左侧得分']
+        order = ['股票代码', '得分合计', '高点左侧得分', '高点右侧得分','今日左侧得分', '收盘价低于(高低点黄金比例)']
+        df_filter_side = df_filter_side[order]
+        df_filter_side = df_filter_side.sort_values('得分合计', ascending=False)
         df_filter_side.reset_index(drop=True, inplace=True)
         wx.info("[Filter Fix] Completed Filter the Left & Right Side ")
 

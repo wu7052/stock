@@ -6,6 +6,8 @@ import time
 import new_logger as lg
 import re
 from conf import conf_handler
+from filter_package import filter_fix
+from report_package import ws_rp
 
 # 计时器 装饰器
 def wx_timer(func):
@@ -927,6 +929,44 @@ def report_cross_dgj_ws(rp=None, ws_days=180, dgj_days=180):
                        filename='大宗-董高监交易-最新收盘价比对', type='.xlsx', index=False)
     else:
         return -1
+
+@wx_timer
+def filter_A():
+    wx = lg.get_handle()
+    filter_a = filter_fix()
+    df_pe_grp = filter_a.filter_pe()
+    wx.info("[Filter PE] {} founded ".format(len(df_pe_grp)))
+    df_amount_grp = filter_a.filter_tt_amount()
+    wx.info("[Filter Total Amount] {} founded".format(len(df_amount_grp)))
+
+    df_target = pd.merge(df_pe_grp, df_amount_grp)
+
+    df_below_ma55_grp = filter_a.filter_below_ma55()
+    wx.info("[Filter Below Ma 55] {} founded".format(len(df_below_ma55_grp)))
+
+    df_target = pd.merge(df_target, df_below_ma55_grp)
+
+    df_high_price_grp = filter_a.filter_high_price()
+    wx.info("[Filter High Price] {} founded".format(len(df_high_price_grp)))
+
+    df_target = pd.merge(df_target, df_high_price_grp)
+    df_target.rename(columns={'id':'股票代码','tt_amount':'流通市值','close':'最近交易日收盘价',
+                              'ma_5':'5日均值','ma_55':'55日均值','high':'最近交易日最高价'}, inplace = True)
+    wx.info("[Filter_A Completed] {} founded".format(len(df_target)))
+
+    reporter = ws_rp()
+    reporter.output_table(dd_df=df_target.round(2), sheet_name='PE_MA55_股本_股价筛选结果',
+                    filename='选股清单_1', type='.xlsx', index=False)
+
+    df_filter_side = filter_a.filter_side()
+    reporter.output_table(dd_df=df_filter_side, sheet_name='涨幅筛选结果',
+                    filename='选股清单_2', type='.xlsx', index=False)
+
+    df_filter_result = pd.merge(df_filter_side, df_target.round(2))
+    reporter.output_table(dd_df=df_filter_result, sheet_name='最终清单',
+                    filename='选股清单', type='.xlsx', index=False)
+    wx.info("[Filter_A Completed] 选股完成，合计： {} ".format(len(df_filter_result)))
+
 
 
 """
