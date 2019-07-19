@@ -222,8 +222,8 @@ def update_daily_data_from_sina(date=None):  # date 把数据更新到指定日�
     # sz_data = sz_web_data()
     # sh_data = sh_web_data()
     web_data = ex_web_data()
-    page_src = (('zxqy', 'stock.code_002_201901', '中小板'), ('cyb', 'stock.code_30_201901', '创业板'),
-                ('sz_a', 'stock.code_00_201901', '深证 主板'), ('sh_a', 'stock.code_60_201901', '上证 主板'))
+    page_src = (('zxqy', '002%', '中小板'), ('cyb', '30%', '创业板'),
+                ('sz_a', '00%', '深证 主板'), ('sh_a', '60%', '上证 主板'))
 
     try:
         for src in page_src:
@@ -267,79 +267,202 @@ def update_daily_data_from_sina(date=None):  # date 把数据更新到指定日�
 
                 # 深证 A 股页面 包含了 主板、创业、中小， 所以处理 深证主板的时候，要把 创业、中小 的股票信息去掉
                 daily_data_frame = web_data.sina_daily_data_json_parse(json_str=jstr, date=today)
-                web_data.db_load_into_daily_data(dd_df=daily_data_frame, t_name=src[1])
+                web_data.db_load_into_daily_data(dd_df=daily_data_frame, pre_id=src[1], mode='basic', type= 'cq')
+                web_data.db_load_into_daily_data(dd_df=daily_data_frame, pre_id=src[1], mode='basic', type='qfq')
 
     except Exception as e:
         wx.info("Err [update_daily_data_from_sina]: {}".format(e))
 
 
 @wx_timer
-def update_daily_data_from_ts(period=-1):
+def update_daily_data_from_ts(period=-1, type='cq'):
     wx = lg.get_handle()
     ts = ts_data()
-    sz_data = sz_web_data()
-    sh_data = sh_web_data()
+    web_data = ex_web_data()
 
+    # sz_data = sz_web_data()
+    # sh_data = sh_web_data()
+    name_arr = (('002%', '.SZ', '中小板'),('60%', '.SH', '上证 主板'), ('00%', '.SZ', '深证 主板'),
+                ('30%', '.SZ', '创业板') )
     try:
-        # 中小板
-        id_array_002 = sz_data.db_fetch_stock_id(pre_id='002%')
-        for id in id_array_002:
-            ts_code = id[0] + '.SZ'
-            dd_df = ts.acquire_daily_data(ts_code, period)
-            dd_df['ts_code'] = id[0]
-            # wx.info(dd_df)
-            # wx.info("{} daily data loading into DB...".format(ts_code))
-            sz_data.db_load_into_daily_data(dd_df=dd_df, t_name='stock.code_002_201901')
-
-        # 上证 主板
-        id_array_60 = sh_data.db_fetch_stock_id(pre_id='60%')
-        for id in id_array_60:
-            ts_code = id[0] + '.SH'
-            dd_df = ts.acquire_daily_data(ts_code, period)
-            dd_df['ts_code'] = id[0]
-            # wx.info(dd_df)
-            # wx.info("{} daily data loading into DB...".format(ts_code))
-            sh_data.db_load_into_daily_data(dd_df=dd_df, t_name='stock.code_60_201901')
-
-        # 深证 主板， 在 db_fetch_stcok_id() 中已做处理，剔除了 中小板的 002
-        id_array_00 = sz_data.db_fetch_stock_id(pre_id='00%')
-        for id in id_array_00:
-            ts_code = id[0] + '.SZ'
-            dd_df = ts.acquire_daily_data(ts_code, period)
-            dd_df['ts_code'] = id[0]
-            # wx.info(dd_df)
-            # wx.info("{} daily data loading into DB...".format(ts_code))
-            sz_data.db_load_into_daily_data(dd_df=dd_df, t_name='stock.code_00_201901')
-
-        # 创业板
-        id_array_30 = sz_data.db_fetch_stock_id(pre_id='300%')
-        for id in id_array_30:
-            ts_code = id[0] + '.SZ'
-            dd_df = ts.acquire_daily_data(ts_code, period)
-            dd_df['ts_code'] = id[0]
-            # wx.info(dd_df)
-            # wx.info("{} daily data loading into DB...".format(ts_code))
-            sz_data.db_load_into_daily_data(dd_df=dd_df, t_name='stock.code_30_201901')
+        for name in name_arr:
+            id_array = web_data.db_fetch_stock_id(pre_id=name[0])
+            counter = 1
+            for id in id_array:
+                ts_code = id[0] + name[1]
+                dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
+                while dd_df is None:
+                    wx.info("[update_daily_data_from_ts]...Failed {}, sleep 10 sec, retry ...".format(ts_code))
+                    time.sleep(10)
+                    dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
+                dd_df['ts_code'] = id[0]
+                web_data.db_load_into_daily_data(dd_df=dd_df, pre_id=name[0], mode='basic', type=type)
+                wx.info("[update_daily_data_from_ts] {}/{} completed".format(counter, len(id_array)))
+                counter += 1
     except Exception as e:
         wx.info("Err:[update_daily_data_from_ts]---{}".format(e))
     finally:
         pass
+
+    """
+    try:
+        # 中小板
+        id_array_002 = sz_data.db_fetch_stock_id(pre_id='002%')
+        counter = 1
+        for id in id_array_002:
+            # if id[0] == '002028':
+            ts_code = id[0] + '.SZ'
+            dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
+            while dd_df is None:
+                wx.info("[update_daily_data_from_ts]...Failed {}, sleep 10 sec, retry ...".format(ts_code))
+                time.sleep(10)
+                dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
+            dd_df['ts_code'] = id[0]
+            sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='002%', mode='basic', type=type)
+            wx.info("[update_daily_data_from_ts] {}/{} completed".format(counter, len(id_array_002)))
+            counter += 1
+            # if type=='cq':
+            #     sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='002', mode='basic', type='cq')
+            # elif type == 'qfq':
+            #     sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='002', mode='basic', type='qfq')
+
+        # 上证 主板
+        id_array_60 = sh_data.db_fetch_stock_id(pre_id='60%')
+        counter = 1
+        for id in id_array_60:
+            ts_code = id[0] + '.SH'
+            dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
+            while dd_df is None:
+                wx.info("[update_daily_data_from_ts]...Failed {}, sleep 10 sec, retry ...".format(ts_code))
+                time.sleep(10)
+                dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
+            dd_df['ts_code'] = id[0]
+            sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='60%', mode='basic', type=type)
+            wx.info("[update_daily_data_from_ts] {}/{} completed".format(counter, len(id_array_002)))
+            counter += 1
+            # if type == 'cq':
+            #     sh_data.db_load_into_daily_data(dd_df=dd_df, pre_id='60', mode='basic', type='cq')
+            # elif type == 'qfq':
+            #     sh_data.db_load_into_daily_data(dd_df=dd_df, pre_id='60', mode='basic', type='qfq')
+
+
+        # 深证 主板， 在 db_fetch_stcok_id() 中已做处理，剔除了 中小板的 002
+        id_array_00 = sz_data.db_fetch_stock_id(pre_id='00%')
+        counter = 1
+        for id in id_array_00:
+            ts_code = id[0] + '.SZ'
+            dd_df = ts.acquire_daily_data(code=ts_code, period=period,type=type)
+            while dd_df is None:
+                wx.info("[update_daily_data_from_ts]...Failed {}, sleep 10 sec, retry ...".format(ts_code))
+                time.sleep(10)
+                dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
+            dd_df['ts_code'] = id[0]
+            sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='00%', mode='basic', type=type)
+            wx.info("[update_daily_data_from_ts] {}/{} completed".format(counter, len(id_array_002)))
+            counter += 1
+            # if type == 'cq':
+            #     sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='00', mode='basic', type='cq')
+            # elif type == 'qfq':
+            #     sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='00', mode='basic', type='qfq')
+
+
+        # 创业板
+        id_array_30 = sz_data.db_fetch_stock_id(pre_id='30%')
+        counter = 1
+        for id in id_array_30:
+            ts_code = id[0] + '.SZ'
+            dd_df = ts.acquire_daily_data(code=ts_code, period=period,type=type)
+            while dd_df is None:
+                wx.info("[update_daily_data_from_ts]...Failed {}, sleep 10 sec, retry ...".format(ts_code))
+                time.sleep(10)
+                dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
+            dd_df['ts_code'] = id[0]
+            sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='30%', mode='basic', type=type)
+            wx.info("[update_daily_data_from_ts] {}/{} completed".format(counter, len(id_array_002)))
+            counter += 1
+            # if type == 'cq':
+            #     sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='30', mode='basic', type='cq')
+            # elif type == 'qfq':
+            #     sz_data.db_load_into_daily_data(dd_df=dd_df, pre_id='30', mode='basic', type='qfq')
+
+    except Exception as e:
+        wx.info("Err:[update_daily_data_from_ts]---{}".format(e))
+    finally:
+        pass
+    """
+
+@wx_timer
+def update_last_day_qfq_data_from_ts():
+    wx = lg.get_handle()
+    ts = ts_data()
+    web_data = ex_web_data()
+    for d1 in range(0, -30, -1):
+        today = (date.today() + timedelta(days=d1)).strftime('%Y%m%d')
+        df1 = ts.acquire_factor(date=today)
+        if df1 is not None:
+            break
+
+    for d2 in range(d1-1, -30, -1):
+        last_day = (date.today() + timedelta(days=d2)).strftime('%Y%m%d')
+        df2 = ts.acquire_factor(date=last_day)
+        if df2 is not None:
+            break
+
+    df3 = pd.merge(df1, df2, how='outer', on='ts_code', copy=False)
+    df3.fillna(0, inplace=True)
+    df3['adj_factor'] = df3['adj_factor_x'] - df3['adj_factor_y']
+
+    qfq_id_df = df3.loc[df3["adj_factor"] != 0,].copy()
+    qfq_id_df.sort_values(by='ts_code', ascending=True, inplace=True)
+    qfq_id_arr = qfq_id_df['ts_code'].values
+    qfq_df_00 = pd.DataFrame()
+    qfq_df_002 = pd.DataFrame()
+    qfq_df_30 = pd.DataFrame()
+    qfq_df_60 = pd.DataFrame()
+    i_counter = 1
+    for ts_code in qfq_id_arr:
+        wx.info("[update_last_day_qfq_data_from_ts] {}/{} will be updated qfq".format(i_counter, len(qfq_id_arr)))
+        qfq_dd_df = ts.acquire_daily_data(ts_code, period=-240, type='qfq')
+        while qfq_dd_df is None:
+            wx.info("[update_last_day_qfq_data_from_ts] Failed to acquire {} qfq data from Tushare, retry in 10 seconds...".format(ts_code))
+            time.sleep(10)
+            qfq_dd_df = ts.acquire_daily_data(code=ts_code, period=-240, type='qfq')
+        i_counter += 1
+        if re.match('002',ts_code) is not None:
+            qfq_df_002 = qfq_df_002.append(qfq_dd_df, ignore_index=True)
+        elif  re.match('00', ts_code) is not None :
+            qfq_df_00 = qfq_df_00.append(qfq_dd_df, ignore_index=True)
+        elif re.match('30', ts_code) is not None:
+            qfq_df_30 = qfq_df_30.append(qfq_dd_df, ignore_index=True)
+        elif  re.match('60', ts_code) is not None :
+            qfq_df_60 = qfq_df_60.append(qfq_dd_df, ignore_index=True)
+        else:
+            wx.info("[update_daily_qfq_data_from_ts] stock_type does NOT match ('002','00','30','60')")
+
+    if qfq_df_002.empty == False:
+        qfq_df_002['ts_code'] = qfq_df_002['ts_code'].apply(lambda x: x[0:6])
+        qfq_df_002.rename(columns={'ts_code': 'id', 'trade_date': 'date', 'change': 'chg'}, inplace=True)
+        web_data.db_load_into_daily_data(dd_df=qfq_df_002, pre_id='002%', mode='basic', type='qfq')
+    if qfq_df_00.empty == False:
+        qfq_df_00['ts_code'] = qfq_df_00['ts_code'].map(lambda x: x[0:6])
+        qfq_df_00.rename(columns={'ts_code': 'id', 'trade_date': 'date', 'change': 'chg'}, inplace=True)
+        web_data.db_load_into_daily_data(dd_df=qfq_df_00, pre_id='00%', mode='basic', type='qfq')
+    if qfq_df_30.empty == False:
+        qfq_df_30['ts_code'] = qfq_df_30['ts_code'].map(lambda x: x[0:6])
+        qfq_df_30.rename(columns={'ts_code': 'id', 'trade_date': 'date', 'change': 'chg'}, inplace=True)
+        web_data.db_load_into_daily_data(dd_df=qfq_df_30, pre_id='30%', mode='basic', type='qfq')
+    if qfq_df_60.empty == False:
+        qfq_df_60['ts_code'] = qfq_df_60['ts_code'].map(lambda x: x[0:6])
+        qfq_df_60.rename(columns={'ts_code': 'id', 'trade_date': 'date', 'change': 'chg'}, inplace=True)
+        web_data.db_load_into_daily_data(dd_df=qfq_df_60, pre_id='60%', mode='basic', type='qfq')
 
 
 @wx_timer
 def update_daily_data_from_eastmoney(date=None, supplement=True):
     wx = lg.get_handle()
     web_data = ex_web_data()
-    h_conf = conf_handler(conf="stock_analyer.conf")
-    tname_00 = h_conf.rd_opt('db', 'daily_table_00')
-    tname_30 = h_conf.rd_opt('db', 'daily_table_30')
-    tname_60 = h_conf.rd_opt('db', 'daily_table_60')
-    tname_002 = h_conf.rd_opt('db', 'daily_table_002')
-    page_src = (('C.2', tname_60, '上证 主板'),('C._SZAME', tname_00, '深证 主板'), ('C.13', tname_002, '中小板'),
-                ('C.80', tname_30, '创业板') )
-
-    # page_src = (('C._SZAME', 'stock.code_00_201901', '深证 主板'), ('C.13', 'stock.code_002_201901', '中小板'),
-    #             ('C.80', 'stock.code_30_201901', '创业板'), ('C.2', 'stock.code_60_201901', '上证 主板'))
+    page_src = (('C.2', '60%', '上证 主板'),('C._SZAME', '00%', '深证 主板'), ('C.13', '002%', '中小板'),
+                ('C.80', '30%', '创业板') )
 
     try:
         for src in page_src:
@@ -413,7 +536,11 @@ def update_daily_data_from_eastmoney(date=None, supplement=True):
 
                     page_db_df['amount'] = pd.to_numeric(page_db_df['amount'])
                     page_db_df['amount'] = page_db_df['amount'] / 1000
-                    web_data.db_load_into_daily_data(dd_df=page_db_df, t_name=src[1], mode='full')
+
+                    page_db_df_qfq = page_db_df.loc[:,['id','date','open','high','low','close','pre_close',
+                                                       'chg','pct_chg','vol','amount']]
+                    web_data.db_load_into_daily_data(dd_df=page_db_df, pre_id=src[1], mode='full', type='cq')
+                    web_data.db_load_into_daily_data(dd_df=page_db_df_qfq, pre_id=src[1], mode='basic', type='qfq')
 
     except Exception as e:
         wx.info("Err [update_daily_data_from_eastmoney]: {}".format(e))
@@ -493,10 +620,6 @@ def update_dgj_trading_data_from_eastmoney(force=False):
                                         columns=['pct_chg', 'dgj_name', 'id', 'trader_name', 'unknown2', 'date',
                                                  'vol', 'in_hands', 'price', 's_name', 'relation', 's_abb_name',
                                                  'trading_type', 'amount', 'dgj_pos', 'unknown3'])
-            # page_df.rename(
-            #     columns={0: 'unknown1', 1: 'dgj_name', 2: 'id', 3: 'trader_name', 4: 'unknown2', 5: 'date', 6: 'vol',
-            #              7: 'in_hands', 8: 'price', 9: 's_name', 10: 'relation', 11: 's_abb_name', 12: 'trade_type',
-            #             13: 'amount', 14: 'dgj_pos', 15: 'unknown3' }, inplace=True)
             page_db_df = page_full_df.loc[:, ['date', 'id', 'dgj_name', 'dgj_pos', 'trader_name', 'relation', 'vol',
                                               'price', 'amount', 'pct_chg', 'trading_type', 'in_hands']]
 
@@ -601,15 +724,15 @@ def ws_supplement():
 # 更新Indicator MA 表 移动均值, 批量更新，减少数据库访问
 """
 @wx_timer
-def update_ind_ma_2(fresh = False):
+def update_ind_ma_2(fresh = False, data_src='cq'):
     wx = lg.get_handle()
     web_data = ex_web_data()
     pre_id=['60%','002%','30%','00%']
     ma = ma_kits()
     for pre in pre_id:
         id_arr = web_data.db_fetch_stock_id(pre_id = pre)
-        ma_ret = ma.calc_arr(stock_arr=id_arr, fresh=fresh)
-        web_data.db_load_into_ind_xxx(ind_type='ma' ,ind_df=ma_ret ,stock_type=pre)
+        ma_ret = ma.calc_arr(stock_arr=id_arr, fresh=fresh, data_src=data_src)
+        web_data.db_load_into_ind_xxx(ind_type='ma' ,ind_df=ma_ret ,stock_type=pre, data_src=data_src)
         wx.info("[update_ind_ma]=========== {} MA =========== Data Loaded ALL [{}]".format(pre, len(id_arr)))
 
 

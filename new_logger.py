@@ -38,7 +38,7 @@ def _init_():
         'filters': {},
         'handlers': {
             'console': {
-                'level': 'DEBUG',
+                'level': 'INFO',
                 'class': 'logging.StreamHandler',  # 打印到屏幕
                 'formatter': 'simple'
             },
@@ -55,7 +55,7 @@ def _init_():
         'loggers': {
             '': {
                 'handlers': ['default', 'console'],  # 这里把上面定义的两个handler都加上，即log数据既写入文件又打印到屏幕
-                'level': 'DEBUG',
+                'level': 'INFO',
                 'propagate': True,  # 向上（更高level的logger）传递
             },
         },

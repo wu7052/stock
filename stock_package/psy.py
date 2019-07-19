@@ -11,10 +11,10 @@ class psy_kits(object):
         self.h_conf = conf_handler(conf="stock_analyer.conf")
         self.period = int(self.h_conf.rd_opt('psy', 'period'))
 
-        self.tname_00 = self.h_conf.rd_opt('db', 'daily_table_00')
-        self.tname_30 = self.h_conf.rd_opt('db', 'daily_table_30')
-        self.tname_60 = self.h_conf.rd_opt('db', 'daily_table_60')
-        self.tname_002 = self.h_conf.rd_opt('db', 'daily_table_002')
+        self.tname_00 = self.h_conf.rd_opt('db', 'daily_table_cq_00')
+        self.tname_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
+        self.tname_60 = self.h_conf.rd_opt('db', 'daily_table_cq_60')
+        self.tname_002 = self.h_conf.rd_opt('db', 'daily_table_cq_002')
 
         host = self.h_conf.rd_opt('db', 'host')
         database = self.h_conf.rd_opt('db', 'database')
@@ -24,10 +24,10 @@ class psy_kits(object):
 
     def get_cprice(self, stock_id):
         wx = lg.get_handle()
-        tname_00 = self.h_conf.rd_opt('db', 'daily_table_00')
-        tname_30 = self.h_conf.rd_opt('db', 'daily_table_30')
-        tname_60 = self.h_conf.rd_opt('db', 'daily_table_60')
-        tname_002 = self.h_conf.rd_opt('db', 'daily_table_002')
+        tname_00 = self.h_conf.rd_opt('db', 'daily_table_cq_00')
+        tname_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
+        tname_60 = self.h_conf.rd_opt('db', 'daily_table_cq_60')
+        tname_002 = self.h_conf.rd_opt('db', 'daily_table_cq_002')
 
         if re.match('002',stock_id) is not None:
             t_name = tname_002

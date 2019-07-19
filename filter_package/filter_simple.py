@@ -25,10 +25,10 @@ class filter_fix:
             self.filter_golden_pct = self.h_conf.rd_opt('filter_fix', 'filter_golden_pct')
             self.filter_golden_pct_request = float(self.h_conf.rd_opt('filter_fix', 'filter_golden_pct_request'))
 
-            self.daily_t_00 = self.h_conf.rd_opt('db', 'daily_table_00')
-            self.daily_t_30 = self.h_conf.rd_opt('db', 'daily_table_30')
-            self.daily_t_60 = self.h_conf.rd_opt('db', 'daily_table_60')
-            self.daily_t_002 = self.h_conf.rd_opt('db', 'daily_table_002')
+            self.daily_t_00 = self.h_conf.rd_opt('db', 'daily_table_cq_00')
+            self.daily_t_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
+            self.daily_t_60 = self.h_conf.rd_opt('db', 'daily_table_cq_60')
+            self.daily_t_002 = self.h_conf.rd_opt('db', 'daily_table_cq_002')
 
             host = self.h_conf.rd_opt('db', 'host')
             database = self.h_conf.rd_opt('db', 'database')
@@ -99,10 +99,10 @@ class filter_fix:
     """
 
     def filter_below_ma55(self):
-        t_ma_00 = self.h_conf.rd_opt('db', 'ma_table_00')
-        t_ma_30 = self.h_conf.rd_opt('db', 'ma_table_30')
-        t_ma_60 = self.h_conf.rd_opt('db', 'ma_table_60')
-        t_ma_002 = self.h_conf.rd_opt('db', 'ma_table_002')
+        t_ma_00 = self.h_conf.rd_opt('db', 'ma_cq_table_00')
+        t_ma_30 = self.h_conf.rd_opt('db', 'ma_cq_table_30')
+        t_ma_60 = self.h_conf.rd_opt('db', 'ma_cq_table_60')
+        t_ma_002 = self.h_conf.rd_opt('db', 'ma_cq_table_002')
 
         tname_arr = [[t_ma_00, self.daily_t_00], [t_ma_30, self.daily_t_30],
                      [t_ma_60, self.daily_t_60], [t_ma_002, self.daily_t_002]]

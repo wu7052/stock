@@ -9,13 +9,14 @@ class ts_data:
     __timer = 0
     def __init__(self):
         self.h_conf = conf_handler(conf="stock_analyer.conf")
-        token = self.h_conf.rd_opt('tushare', 'token')
-        self.ts= ts.pro_api(token)
-        # self.ts= ts.pro_api('bbbbd0cec7a9a4c7f8b295c738c6d694877fab8db8f48efe9263385f')
+        self.token = self.h_conf.rd_opt('tushare', 'token')
+        self.api= ts.pro_api(self.token)
+
+        # self.api= ts.pro_api('bbbbd0cec7a9a4c7f8b295c738c6d694877fab8db8f48efe9263385f')
 
     def basic_info(self):
-        data = self.ts.stock_basic(exchange='', list_status='L', fields='symbol,name,area,industry,list_date')
-        # data = self.ts.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
+        data = self.api.stock_basic(exchange='', list_status='L', fields='symbol,name,area,industry,list_date')
+        # data = self.api.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
         return data
 
     def trans_day(self):
@@ -23,10 +24,16 @@ class ts_data:
         today = date.today().strftime('%Y%m%d')
         yesterday = (date.today() + timedelta(days=-1)).strftime('%Y%m%d')
         wx.info("Yesterday:{} ---- Today date: {}".format(yesterday,today))
-        return self.ts.trade_cal(exchange='', start_date=yesterday, end_date=today)
+        return self.api.trade_cal(exchange='', start_date=yesterday, end_date=today)
 
-    def acquire_daily_data(self, code, period):
+    def acquire_factor(self, date):
+        df_factor = self.api.query('adj_factor', trade_date=date)
+        return df_factor
+
+
+    def acquire_daily_data(self, code, period, type ='cq'):
         wx = lg.get_handle()
+        ts.set_token(self.token)
         wx.info("tushare called {} times，id: {}".format(ts_data.__counter, code))
         if (ts_data.__counter == 1):  # 第一次调用，会重置 计时器
             ts_data.__timer = time.time()
@@ -40,20 +47,28 @@ class ts_data:
                 # ts_data.__timer = time.time() # 不需要重置计时器，因为上面重置了 计数器，下一次调用时，会重置计时器
             else:
                 # 累计到 200次 调用，用时已超过1分钟，新的一分钟 怎么计算 200 次调用呢
-                ts_data.__counter = 8 * abs(wait_sec)
+                ts_data.__counter = 8 * (abs(wait_sec)%60)
                 # ts_data.__timer += 60 + abs(wait_sec)
-                ts_data.__timer = time.time()-abs(wait_sec)
+                ts_data.__timer = time.time()-(abs(wait_sec)%60)
                 wx.info("Called 200 times More than 60 + {} seconds. New timer start at {}".format(abs(wait_sec),ts_data.__timer))
 
         end_date = date.today().strftime('%Y%m%d')
         start_date = (date.today() + timedelta(days = period)).strftime('%Y%m%d')
         try:
-            df = self.ts.query('daily', ts_code=code, start_date=start_date, end_date=end_date)
+            if type == 'cq':
+                df = self.api.query('daily', ts_code=code, start_date=start_date, end_date=end_date)
+            elif type == 'qfq':
+                df = ts.pro_bar(ts_code=code, adj='qfq', start_date=start_date, end_date=end_date)
         except Exception as e:
             wx.info("tushare exception: {}... sleep 60 seconds, retry....".format(e))
             time.sleep(60)
-            df = self.ts.query('daily', ts_code=code, start_date=start_date, end_date=end_date)
+            if type == 'cq':
+                df = self.api.query('daily', ts_code=code, start_date=start_date, end_date=end_date)
+            elif type == 'qfq':
+                df = ts.pro_bar(ts_code=code, adj='qfq', start_date=start_date, end_date=end_date)
+            # df = self.ts.query('daily', ts_code=code, start_date=start_date, end_date=end_date)
             ts_data.__timer = time.time()
             ts_data.__counter = 0
         ts_data.__counter += 1
+        wx.info("tushare completed called {} times，id: {} ".format(ts_data.__counter, code))
         return df

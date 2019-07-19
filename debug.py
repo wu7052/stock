@@ -17,8 +17,12 @@ from filter_package import filter_fix
 
 from functions import *
 
-filter_A()
-
+# filter_A()
+# update_daily_data_from_eastmoney(supplement=False)
+# update_daily_data_from_eastmoney(date= '20190712',supplement=False)
+# update_daily_data_from_ts(period = -240, type='qfq')
+update_last_day_qfq_data_from_ts()
+# update_daily_qfq_data_from_ts()
 # from conf import conf_handler
 
 # update_ind_ma_2(fresh=True)

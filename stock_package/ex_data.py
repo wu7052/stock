@@ -31,6 +31,17 @@ class ex_web_data(object):
             pwd = self.h_conf.rd_opt('db', 'pwd')
             self.db = db_ops(host=host, db=database, user=user, pwd=pwd)
             # self.db = db_ops(host='127.0.0.1', db='stock', user='wx', pwd='5171013')
+
+            self.dd_cq_00 = self.h_conf.rd_opt('db', 'daily_table_cq_00')
+            self.dd_cq_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
+            self.dd_cq_60 = self.h_conf.rd_opt('db', 'daily_table_cq_60')
+            self.dd_cq_002 = self.h_conf.rd_opt('db', 'daily_table_cq_002')
+
+            self.dd_qfq_00 = self.h_conf.rd_opt('db', 'daily_table_qfq_00')
+            self.dd_qfq_30 = self.h_conf.rd_opt('db', 'daily_table_qfq_30')
+            self.dd_qfq_60 = self.h_conf.rd_opt('db', 'daily_table_qfq_60')
+            self.dd_qfq_002 = self.h_conf.rd_opt('db', 'daily_table_qfq_002')
+
             wx.info("[OBJ] ex_web_data : __init__ called")
         except Exception as e:
             raise e
@@ -88,7 +99,7 @@ class ex_web_data(object):
     #  ind_type = 'ma' 移动均线 ； 'psy' 心理线
     """
 
-    def db_load_into_ind_xxx(self, ind_type='ma', ind_df=None, stock_type=None):
+    def db_load_into_ind_xxx(self, ind_type='ma', ind_df=None, stock_type=None, data_src='cq'):
         wx = lg.get_handle()
         if ind_df is None or stock_type is None:
             wx.info("[db_load_into_ind_xxx] Err: {} Data Frame or Stock Type is Empty,".format(ind_type))
@@ -99,10 +110,10 @@ class ex_web_data(object):
             ind_arry[i] = tuple(ind_arry[i])
             i += 1
 
-        tname_00 = self.h_conf.rd_opt('db', ind_type+'_table_00')
-        tname_30 = self.h_conf.rd_opt('db', ind_type+'_table_30')
-        tname_60 = self.h_conf.rd_opt('db', ind_type+'_table_60')
-        tname_002 = self.h_conf.rd_opt('db', ind_type+'_table_002')
+        tname_00 = self.h_conf.rd_opt('db', ind_type+'_'+data_src+'_table_00')
+        tname_30 = self.h_conf.rd_opt('db', ind_type+'_'+data_src+'_table_30')
+        tname_60 = self.h_conf.rd_opt('db', ind_type+'_'+data_src+'_table_60')
+        tname_002 = self.h_conf.rd_opt('db', ind_type+'_'+data_src+'_table_002')
 
         if re.match('002',stock_type) is not None:
             t_name = tname_002
@@ -289,8 +300,37 @@ class ex_web_data(object):
         self.db.cursor.executemany(sql, dd_array)
         self.db.handle.commit()
 
-    def db_load_into_daily_data(self, dd_df=None, t_name=None, mode='basic'):
+    def db_load_into_daily_data(self, dd_df=None, pre_id = '',  mode='basic', type='cq'):
         wx = lg.get_handle()
+
+        if (type == 'cq'):
+            if pre_id == '00%':
+                t_name = self.dd_cq_00
+            elif pre_id == '30%':
+                t_name = self.dd_cq_30
+            elif pre_id == '60%':
+                t_name = self.dd_cq_60
+            elif pre_id == '002%':
+                t_name = self.dd_cq_002
+            else:
+                wx.info("[db_load_into_daily_data]: TYPE = cq, pre_id ( {} )is NOT Match".format(pre_id))
+                return  None
+        elif(type == 'qfq'):
+            if pre_id == '00%':
+                t_name = self.dd_qfq_00
+            elif pre_id == '30%':
+                t_name = self.dd_qfq_30
+            elif pre_id == '60%':
+                t_name = self.dd_qfq_60
+            elif pre_id == '002%':
+                t_name = self.dd_qfq_002
+            else:
+                wx.info("[db_load_into_daily_data]: TYPE = qfq, pre_id ( {} )is NOT Match".format(pre_id))
+                return  None
+        else:
+            wx.info("[db_load_into_daily_data]: TYPE ( {} ) is NOT Match")
+            return None
+
         if dd_df is None or t_name is None:
             wx.info("[db_load_into_daily_data] Err: Daily Data Frame or Table Name is Empty,")
             return -1

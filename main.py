@@ -47,9 +47,9 @@ update_daily_data_from_eastmoney(supplement=False)
 
 
 """####################################################################
-# 从tushare 获取前一天的 交易数据
+# 从tushare 获取前一天的 交易数据, type = 'cq' 表示除权价格； type = 'qfq' 表示前复权价格
 """
-# update_daily_data_from_ts(period = -11)
+# update_daily_data_from_ts(period = -1, type='cq')
 
 
 """####################################################################
@@ -80,8 +80,17 @@ update_repo_data_from_eastmoney()
 #  计算 收盘价的 移动均值（MA5,10,20,60） 及 指数移动均值（EMA)
 #  fresh = True 从过去 240个交易日 开始计算，并更新相关历史记录；在数据库初始化时使用
 #  fresh = False 增量更新，最近一个交易日的均值
+#  data_src='cq' 或 'qfq'，分别从除权表、前复权表 读取数据，并将结果计入不同的ma表格
 """
-update_ind_ma_2(fresh=False)
+# update_ind_ma_2(fresh=False, data_src='cq')
+# update_ind_ma_2(fresh=False, data_src='qfq')
+
+
+
+"""
+#  根据规则筛选股票，PE、收盘价、流通金额、Ma55、高点左右侧得分、黄金比例、
+"""
+# filter_A()
 
 
 """
