@@ -30,9 +30,9 @@ from functions import *
 # 从上证、深证 网站更新 A 股基础信息
 # 从申银万国 更新 行业分类
 """
-# update_sh_basic_info_2()
-# update_sz_basic_info()
-# update_sw_industry_into_basic_info()
+update_sh_basic_info_2()
+update_sz_basic_info()
+update_sw_industry_into_basic_info()
 
 
 """####################################################################
@@ -41,7 +41,7 @@ from functions import *
 """
 # 常用功能，从 eastmoney 获得全部的 日交易数据
 update_daily_data_from_eastmoney(supplement=False)
-
+update_last_day_qfq_data_from_ts()
 # 更新当前数据到 指定的日期
 # update_daily_data_from_eastmoney(date= '20190606',supplement=False)
 
@@ -82,15 +82,16 @@ update_repo_data_from_eastmoney()
 #  fresh = False 增量更新，最近一个交易日的均值
 #  data_src='cq' 或 'qfq'，分别从除权表、前复权表 读取数据，并将结果计入不同的ma表格
 """
-# update_ind_ma_2(fresh=False, data_src='cq')
-# update_ind_ma_2(fresh=False, data_src='qfq')
+update_ind_ma_2(fresh=False, data_src='cq')
+update_ind_ma_2(fresh=True, data_src='qfq')
 
 
 
 """
 #  根据规则筛选股票，PE、收盘价、流通金额、Ma55、高点左右侧得分、黄金比例、
+#  data_src = 'cq' 或 'qfq'
 """
-# filter_A()
+filter_A(data_src='qfq')
 
 
 """

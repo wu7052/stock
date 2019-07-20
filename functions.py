@@ -458,7 +458,7 @@ def update_last_day_qfq_data_from_ts():
 
 
 @wx_timer
-def update_daily_data_from_eastmoney(date=None, supplement=True):
+def update_daily_data_from_eastmoney(date=None, supplement=False):
     wx = lg.get_handle()
     web_data = ex_web_data()
     page_src = (('C.2', '60%', '上证 主板'),('C._SZAME', '00%', '深证 主板'), ('C.13', '002%', '中小板'),
@@ -1054,22 +1054,25 @@ def report_cross_dgj_ws(rp=None, ws_days=180, dgj_days=180):
         return -1
 
 @wx_timer
-def filter_A():
+def filter_A(data_src='cq'):
     wx = lg.get_handle()
     filter_a = filter_fix()
+    # 除权表
     df_pe_grp = filter_a.filter_pe()
     wx.info("[Filter PE] {} founded ".format(len(df_pe_grp)))
-    df_amount_grp = filter_a.filter_tt_amount()
-    wx.info("[Filter Total Amount] {} founded".format(len(df_amount_grp)))
 
+    # 前复权表
+    df_amount_grp = filter_a.filter_tt_amount(data_src=data_src)
+    wx.info("[Filter Total Amount] {} founded".format(len(df_amount_grp)))
     df_target = pd.merge(df_pe_grp, df_amount_grp)
 
-    df_below_ma55_grp = filter_a.filter_below_ma55()
+    # 前复权表
+    df_below_ma55_grp = filter_a.filter_below_ma55(data_src=data_src)
     wx.info("[Filter Below Ma 55] {} founded".format(len(df_below_ma55_grp)))
-
     df_target = pd.merge(df_target, df_below_ma55_grp)
 
-    df_high_price_grp = filter_a.filter_high_price()
+    # 前复权表
+    df_high_price_grp = filter_a.filter_high_price(data_src=data_src)
     wx.info("[Filter High Price] {} founded".format(len(df_high_price_grp)))
 
     df_target = pd.merge(df_target, df_high_price_grp)
@@ -1079,15 +1082,16 @@ def filter_A():
 
     reporter = ws_rp()
     reporter.output_table(dd_df=df_target.round(2), sheet_name='PE_MA55_股本_股价筛选结果',
-                    filename='选股清单_1', type='.xlsx', index=False)
+                    filename='选股清单_1_'+data_src, type='.xlsx', index=False)
 
-    df_filter_side = filter_a.filter_side()
+    # 前复权表
+    df_filter_side = filter_a.filter_side(data_src=data_src)
     reporter.output_table(dd_df=df_filter_side, sheet_name='涨幅筛选结果',
-                    filename='选股清单_2', type='.xlsx', index=False)
+                    filename='选股清单_2_'+data_src, type='.xlsx', index=False)
 
     df_filter_result = pd.merge(df_filter_side, df_target.round(2))
     reporter.output_table(dd_df=df_filter_result, sheet_name='最终清单',
-                    filename='选股清单', type='.xlsx', index=False)
+                    filename='选股清单_'+data_src, type='.xlsx', index=False)
     wx.info("[Filter_A Completed] 选股完成，合计： {} ".format(len(df_filter_result)))
 
 
