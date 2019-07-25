@@ -1,11 +1,8 @@
 from db_package import db_ops
-# from stock_package import  ex_web_data
 from conf import conf_handler
 import new_logger as lg
-from datetime import datetime, time, date, timedelta
-import time
+from datetime import  date, timedelta
 import pandas as pd
-import numpy as np
 
 
 class filter_fix:

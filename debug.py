@@ -14,15 +14,21 @@ from report_package import ws_rp
 
 import pandas as pd
 from filter_package import filter_fix
-
+from assess_package import back_trader
 from functions import *
 
-filter_A(data_src='cq')
-filter_A(data_src='qfq')
+# bt = back_trader(trade_date='20180130')
+update_sh_basic_info_kc()
+# update_sh_basic_info_2()
+
+# filter_A(data_src='cq')
+# filter_A(data_src='qfq')
 # update_daily_data_from_eastmoney(supplement=False)
 # update_daily_data_from_eastmoney(date= '20190712',supplement=False)
 # update_daily_data_from_ts(period = -240, type='qfq')
-# update_last_day_qfq_data_from_ts()
+# qfq_id_arr = update_last_day_qfq_data_from_ts()
+# update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
+
 # update_daily_qfq_data_from_ts()
 # from conf import conf_handler
 

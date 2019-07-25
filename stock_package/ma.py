@@ -24,11 +24,13 @@ class ma_kits(object):
         self.cq_tname_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
         self.cq_tname_60 = self.h_conf.rd_opt('db', 'daily_table_cq_60')
         self.cq_tname_002 = self.h_conf.rd_opt('db', 'daily_table_cq_002')
+        self.cq_tname_68 = self.h_conf.rd_opt('db', 'daily_table_cq_68')
 
         self.qfq_tname_00 = self.h_conf.rd_opt('db', 'daily_table_qfq_00')
         self.qfq_tname_30 = self.h_conf.rd_opt('db', 'daily_table_qfq_30')
         self.qfq_tname_60 = self.h_conf.rd_opt('db', 'daily_table_qfq_60')
         self.qfq_tname_002 = self.h_conf.rd_opt('db', 'daily_table_qfq_002')
+        self.qfq_tname_68 = self.h_conf.rd_opt('db', 'daily_table_qfq_68')
 
         host = self.h_conf.rd_opt('db', 'host')
         database = self.h_conf.rd_opt('db', 'database')
@@ -51,6 +53,8 @@ class ma_kits(object):
                 t_name = self.cq_tname_30
             elif re.match('60', stock_arr[0][0]) is not None:
                 t_name = self.cq_tname_60
+            elif re.match('68', stock_arr[0][0]) is not None:
+                t_name = self.cq_tname_68
             else:
                 wx.info("[Class MA_kits: calc] failed to identify the Stock_id {}".format(stock_arr[0][0]))
                 return None
@@ -63,6 +67,8 @@ class ma_kits(object):
                 t_name = self.qfq_tname_30
             elif re.match('60', stock_arr[0][0]) is not None:
                 t_name = self.qfq_tname_60
+            elif re.match('68', stock_arr[0][0]) is not None:
+                t_name = self.qfq_tname_68
             else:
                 wx.info("[Class MA_kits: calc] failed to identify the Stock_id {}".format(stock_arr[0][0]))
                 return None
@@ -123,7 +129,7 @@ class ma_kits(object):
         return df_ma
 
 
-    def calc(self, stock_id, fresh=False, data_src='cq'):
+    def calc(self, stock_id, fresh=True, data_src='qfq'):
         wx = lg.get_handle()
 
         if data_src == 'cq':
@@ -135,6 +141,8 @@ class ma_kits(object):
                 t_name = self.cq_tname_30
             elif  re.match('60', stock_id) is not None :
                 t_name = self.cq_tname_60
+            elif re.match('68', stock_id) is not None:
+                t_name = self.cq_tname_68
             else:
                 wx.info ("[Class MA_kits: calc] failed to identify the Stock_id {}".format(stock_id))
                 return None
@@ -147,6 +155,8 @@ class ma_kits(object):
                 t_name = self.qfq_tname_30
             elif  re.match('60', stock_id) is not None :
                 t_name = self.qfq_tname_60
+            elif  re.match('68', stock_id) is not None :
+                t_name = self.qfq_tname_68
             else:
                 wx.info ("[Class MA_kits: calc] failed to identify the Stock_id {}".format(stock_id))
                 return None
@@ -154,7 +164,7 @@ class ma_kits(object):
             wx.info("[Class MA_kits: calc] failed to identify the Data Src {}".format(data_src))
             return None
 
-        sql = "select id, date, close from " + t_name + " where id = " + stock_id + " order by date desc limit 240"
+        sql = "select id, date, close from " + t_name + " where id = " + stock_id + " order by date desc "
         df_ma = self.db._exec_sql(sql)
         df_ma.sort_values(by='date', ascending=True, inplace=True)
 
@@ -182,7 +192,6 @@ class ma_kits(object):
 
         df_ma.drop(columns=['close'], inplace= True)
         df_ma.dropna(axis=0, how="any", inplace=True)
-        # df_ma.fillna(0, inplace=True)
         if fresh == False:
             df_ma = df_ma.iloc[-1:]  # 选取DataFrame最后一行，返回的是DataFrame
         return df_ma

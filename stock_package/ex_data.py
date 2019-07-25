@@ -36,11 +36,13 @@ class ex_web_data(object):
             self.dd_cq_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
             self.dd_cq_60 = self.h_conf.rd_opt('db', 'daily_table_cq_60')
             self.dd_cq_002 = self.h_conf.rd_opt('db', 'daily_table_cq_002')
+            self.dd_cq_68 = self.h_conf.rd_opt('db', 'daily_table_cq_68')
 
             self.dd_qfq_00 = self.h_conf.rd_opt('db', 'daily_table_qfq_00')
             self.dd_qfq_30 = self.h_conf.rd_opt('db', 'daily_table_qfq_30')
             self.dd_qfq_60 = self.h_conf.rd_opt('db', 'daily_table_qfq_60')
             self.dd_qfq_002 = self.h_conf.rd_opt('db', 'daily_table_qfq_002')
+            self.dd_qfq_68 = self.h_conf.rd_opt('db', 'daily_table_qfq_68')
 
             wx.info("[OBJ] ex_web_data : __init__ called")
         except Exception as e:
@@ -61,10 +63,10 @@ class ex_web_data(object):
         return table_name
 
     def db_fetch_stock_id(self, pre_id):
-        if pre_id == '00%':
-            sql = "select id from list_a where id like '" + pre_id + "' and id not like '002%'"
-        else:
-            sql = "select id from list_a where id like '" + pre_id + "'"
+        # if pre_id == '00%':
+        #     sql = "select id from list_a where id like '" + pre_id + "' and id not like '002%'"
+        # else:
+        sql = "select id from list_a where id like '" + pre_id + "'"
         id = self.db.cursor.execute(sql)
         id_array = self.db.cursor.fetchmany(id)
         return id_array
@@ -114,6 +116,7 @@ class ex_web_data(object):
         tname_30 = self.h_conf.rd_opt('db', ind_type+'_'+data_src+'_table_30')
         tname_60 = self.h_conf.rd_opt('db', ind_type+'_'+data_src+'_table_60')
         tname_002 = self.h_conf.rd_opt('db', ind_type+'_'+data_src+'_table_002')
+        tname_68 = self.h_conf.rd_opt('db', ind_type+'_'+data_src+'_table_68')
 
         if re.match('002',stock_type) is not None:
             t_name = tname_002
@@ -123,6 +126,8 @@ class ex_web_data(object):
             t_name = tname_30
         elif  re.match('60', stock_type) is not None :
             t_name = tname_60
+        elif re.match('68', stock_type) is not None:
+            t_name = tname_68
         else:
             wx.info("[db_load_into_ind_xxx] stock_type does NOT match ('002','00','30','60')")
 
@@ -312,6 +317,8 @@ class ex_web_data(object):
                 t_name = self.dd_cq_60
             elif pre_id == '002%':
                 t_name = self.dd_cq_002
+            elif pre_id == '68%':
+                t_name = self.dd_cq_68
             else:
                 wx.info("[db_load_into_daily_data]: TYPE = cq, pre_id ( {} )is NOT Match".format(pre_id))
                 return  None
@@ -324,6 +331,8 @@ class ex_web_data(object):
                 t_name = self.dd_qfq_60
             elif pre_id == '002%':
                 t_name = self.dd_qfq_002
+            elif pre_id == '68%':
+                t_name = self.dd_qfq_68
             else:
                 wx.info("[db_load_into_daily_data]: TYPE = qfq, pre_id ( {} )is NOT Match".format(pre_id))
                 return  None
