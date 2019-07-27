@@ -7,20 +7,23 @@ import pandas as pd
 
 class filter_fix:
 
-    def __init__(self):
+    # f_conf 指定策略文件路径
+    # date 指定回测日期，默认是最近交易日
+    def __init__(self, f_conf='', date=''):
         wx = lg.get_handle()
         try:
+            self.f_conf = conf_handler(conf=f_conf)
             self.h_conf = conf_handler(conf="stock_analyer.conf")
-            self.pe = self.h_conf.rd_opt('filter_fix', 'pe')
-            self.total_amount = self.h_conf.rd_opt('filter_fix', 'total_amount')
-            self.high_price = self.h_conf.rd_opt('filter_fix', 'high_price')
-            self.days = self.h_conf.rd_opt('filter_fix', 'below_ma55_days')
-            self.filter_growth_below_pct = self.h_conf.rd_opt('filter_fix', 'filter_growth_below_pct')
-            self.filter_high_left_power_request = self.h_conf.rd_opt('filter_fix', 'filter_high_left_power_request')
-            self.filter_high_right_power_request = self.h_conf.rd_opt('filter_fix', 'filter_high_right_power_request')
-            self.filter_cur_left_power_request = self.h_conf.rd_opt('filter_fix', 'filter_cur_left_power_request')
-            self.filter_golden_pct = self.h_conf.rd_opt('filter_fix', 'filter_golden_pct')
-            self.filter_golden_pct_request = float(self.h_conf.rd_opt('filter_fix', 'filter_golden_pct_request'))
+            self.pe = self.f_conf.rd_opt('filter_fix', 'pe')
+            self.total_amount = self.f_conf.rd_opt('filter_fix', 'total_amount')
+            self.high_price = self.f_conf.rd_opt('filter_fix', 'high_price')
+            self.days = self.f_conf.rd_opt('filter_fix', 'below_ma55_days')
+            self.filter_growth_below_pct = self.f_conf.rd_opt('filter_fix', 'filter_growth_below_pct')
+            self.filter_high_left_power_request = self.f_conf.rd_opt('filter_fix', 'filter_high_left_power_request')
+            self.filter_high_right_power_request = self.f_conf.rd_opt('filter_fix', 'filter_high_right_power_request')
+            self.filter_cur_left_power_request = self.f_conf.rd_opt('filter_fix', 'filter_cur_left_power_request')
+            self.filter_golden_pct = self.f_conf.rd_opt('filter_fix', 'filter_golden_pct')
+            self.filter_golden_pct_request = float(self.f_conf.rd_opt('filter_fix', 'filter_golden_pct_request'))
 
             self.daily_cq_t_00 = self.h_conf.rd_opt('db', 'daily_table_cq_00')
             self.daily_cq_t_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
@@ -39,9 +42,13 @@ class filter_fix:
             self.db = db_ops(host=host, db=database, user=user, pwd=pwd)
             wx.info("[OBJ] filter_fix : __init__ called")
 
-            sql = "SELECT date from " + self.daily_cq_t_00 + " order by date desc limit 1"
-            df_date = self.db._exec_sql(sql=sql)
-            self.date = df_date.iloc[0, 0]
+            # 指定日期，用于回测，默认日期是当前最近交易日
+            if date == '':
+                sql = "SELECT date from " + self.daily_cq_t_00 + " order by date desc limit 1"
+                df_date = self.db._exec_sql(sql=sql)
+                self.date = df_date.iloc[0, 0]
+            else:
+                self.date = date
         except Exception as e:
             raise e
 
@@ -207,7 +214,7 @@ class filter_fix:
         df_side_right.loc[df_side_right[(df_side_right['pct_chg'] >= 11)].index, ['pct_chg_int']] = 0
 
         # 读取 高点左侧 涨幅的权重表
-        high_left_power_conf = dict(self.h_conf.rd_sec(sec='filter_high_left_power_table'))
+        high_left_power_conf = dict(self.f_conf.rd_sec(sec='filter_high_left_power_table'))
         zero_power_table = dict(zip(range(-10, 11), [0] * 21))  # 从 -10% 到 10% 全部权重为0
         high_left_power = 0
         for key in high_left_power_conf.keys():
@@ -227,7 +234,7 @@ class filter_fix:
                 high_left_power += pct_count[key] * real_power_table[key]
 
         # 读取 最新交易日 左侧 涨幅的权重表
-        cur_left_power_conf = dict(self.h_conf.rd_sec(sec='filter_cur_left_power_table'))
+        cur_left_power_conf = dict(self.f_conf.rd_sec(sec='filter_cur_left_power_table'))
         zero_power_table = dict(zip(range(-10, 11), [0] * 21))  # 从 -10% 到 10% 全部权重为0
         cur_left_power = 0
         for key in cur_left_power_conf.keys():
@@ -247,7 +254,7 @@ class filter_fix:
                 cur_left_power += pct_count[key] * real_power_table[key]
 
         # 读取 高点右侧 涨幅的权重表
-        high_right_power_conf = dict(self.h_conf.rd_sec(sec='filter_high_right_power_table'))
+        high_right_power_conf = dict(self.f_conf.rd_sec(sec='filter_high_right_power_table'))
         zero_power_table = dict(zip(range(-10, 11), [0] * 21))  # 从 -10% 到 10% 全部权重为0
         high_right_power = 0
         for key in high_right_power_conf.keys():

@@ -30,10 +30,14 @@ from functions import *
 # 从上证、深证 网站更新 A 股基础信息
 # 从申银万国 更新 行业分类
 """
-update_sh_basic_info_2()
-update_sh_basic_info_kc()
-update_sz_basic_info()
-update_sw_industry_into_basic_info()
+# wx.info("============================[update_sh_basic_info_2]==========================================")
+# update_sh_basic_info_2()
+# wx.info("============================[update_sh_basic_info_kc]==========================================")
+# update_sh_basic_info_kc()
+# wx.info("============================[update_sz_basic_info]==========================================")
+# update_sz_basic_info()
+# wx.info("============================[update_sw_industry_into_basic_info]==========================================")
+# update_sw_industry_into_basic_info()
 
 
 """####################################################################
@@ -41,10 +45,15 @@ update_sw_industry_into_basic_info()
 # supplement = True 表示只添加 增补信息 到数据表， = False 表示所有信息添加到数据表
 """
 # 常用功能，从 eastmoney 获得全部的 日交易数据，同时更新  'cq' \ 'qfq' 两类表
+wx.info("============================[update_daily_data_from_eastmoney]==========================================")
 update_daily_data_from_eastmoney(supplement=False)
+
 # 获得今日需要 前复权处理的 股票id，从 tushare 获得历史 240天的 前复权数据，更新 'qfq' 表
+wx.info("============================[update_last_day_qfq_data_from_ts]==========================================")
 qfq_id_arr = update_last_day_qfq_data_from_ts()
+
 # 更新当前数据到 指定的日期
+# wx.info("============================[update_daily_data_from_eastmoney(date)]==========================================")
 # update_daily_data_from_eastmoney(date= '20190606',supplement=False)
 
 
@@ -60,6 +69,7 @@ qfq_id_arr = update_last_day_qfq_data_from_ts()
 # 截止时间 是今天； force = True 强制更新，删除旧数据
 # update_ws_share_holder 更新 share_holder 表的汇总数据
 """
+wx.info("============================[update_whole_sales_data_from_eastmoney]==========================================")
 update_whole_sales_data_from_eastmoney(force=False)
 # update_ws_share_holder()
 
@@ -67,6 +77,7 @@ update_whole_sales_data_from_eastmoney(force=False)
 """####################################################################
 # 从 eastmoney 获得 董高监 的交易数据（日期、股票、成交人、价格、数量、董高监、关系）
 """
+wx.info("============================[update_dgj_trading_data_from_eastmoney]==========================================")
 update_dgj_trading_data_from_eastmoney(force= False)
 
 
@@ -75,6 +86,7 @@ update_dgj_trading_data_from_eastmoney(force= False)
 # 001：预案 ； 002: 股东大会通过 ； 003：股东大会否决
 # 004：实施 ； 005：终止实施 ； 006： 实施完成
 """
+wx.info("============================[update_repo_data_from_eastmoney]==========================================")
 update_repo_data_from_eastmoney()
 
 
@@ -84,8 +96,11 @@ update_repo_data_from_eastmoney()
 #  fresh = False 增量更新，最近一个交易日的均值
 #  data_src='cq' 或 'qfq'，分别从除权表、前复权表 读取数据，并将结果计入不同的ma表格
 """
+wx.info("============================[update_ind_ma_df]==========================================")
 update_ind_ma_df(fresh=False, data_src='cq')
+wx.info("============================[update_ind_ma_df]==========================================")
 update_ind_ma_df(fresh=False, data_src='qfq')
+wx.info("============================[update_ind_ma_single]==========================================")
 update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
 
 
@@ -93,6 +108,7 @@ update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
 #  根据规则筛选股票，PE、收盘价、流通金额、Ma55、高点左右侧得分、黄金比例、
 #  data_src = 'cq' 或 'qfq'
 """
+# wx.info("============================[filter_A]==========================================")
 # filter_A(data_src='qfq')
 
 

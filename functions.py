@@ -1098,7 +1098,7 @@ def report_cross_dgj_ws(rp=None, ws_days=180, dgj_days=180):
 @wx_timer
 def filter_A(data_src='cq'):
     wx = lg.get_handle()
-    filter_a = filter_fix()
+    filter_a = filter_fix(f_conf='filter_rules\\filter_001.conf')
     # 除权表
     df_pe_grp = filter_a.filter_pe()
     wx.info("[Filter PE] {} founded ".format(len(df_pe_grp)))

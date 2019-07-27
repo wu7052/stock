@@ -18,11 +18,11 @@ from assess_package import back_trader
 from functions import *
 
 # bt = back_trader(trade_date='20180130')
-update_sh_basic_info_kc()
+# update_sh_basic_info_kc()
 # update_sh_basic_info_2()
 
 # filter_A(data_src='cq')
-# filter_A(data_src='qfq')
+filter_A(data_src='qfq')
 # update_daily_data_from_eastmoney(supplement=False)
 # update_daily_data_from_eastmoney(date= '20190712',supplement=False)
 # update_daily_data_from_ts(period = -240, type='qfq')
