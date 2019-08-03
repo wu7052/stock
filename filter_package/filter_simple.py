@@ -9,7 +9,7 @@ class filter_fix:
 
     # f_conf 指定策略文件路径
     # date 指定回测日期，默认是最近交易日
-    def __init__(self, f_conf='', date=''):
+    def __init__(self, f_conf='', f_date=''):
         wx = lg.get_handle()
         try:
             self.f_conf = conf_handler(conf=f_conf)
@@ -43,12 +43,12 @@ class filter_fix:
             wx.info("[OBJ] filter_fix : __init__ called")
 
             # 指定日期，用于回测，默认日期是当前最近交易日
-            if date == '':
+            if f_date == '':
                 sql = "SELECT date from " + self.daily_cq_t_00 + " order by date desc limit 1"
                 df_date = self.db._exec_sql(sql=sql)
                 self.date = df_date.iloc[0, 0]
             else:
-                self.date = date
+                self.date = f_date
         except Exception as e:
             raise e
 
@@ -203,7 +203,7 @@ class filter_fix:
             return None
 
         # 按日期排序，由小到大
-        df_side_left = df_side_left.sort_values('date', ascending=False).copy()
+
         df_side_right = df_side_right.sort_values('date', ascending=False).copy()
 
         # 涨幅 变整数，便于统计数量

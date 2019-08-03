@@ -44,16 +44,21 @@ class ex_web_data(object):
             self.dd_qfq_002 = self.h_conf.rd_opt('db', 'daily_table_qfq_002')
             self.dd_qfq_68 = self.h_conf.rd_opt('db', 'daily_table_qfq_68')
 
-            wx.info("[OBJ] ex_web_data : __init__ called")
+            self.bt_dd_qfq_00 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_00')
+            self.bt_dd_qfq_30 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_30')
+            self.bt_dd_qfq_60 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_60')
+            self.bt_dd_qfq_002 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_002')
+            self.bt_dd_qfq_68 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_68')
+
+            # wx.info("[OBJ] ex_web_data : __init__ called")
         except Exception as e:
             raise e
 
     def __del__(self):
-        # self.logger.wt.info("{} __del__ called".format(self))
-        wx = lg.get_handle()
+        # wx = lg.get_handle()
         self.db.cursor.close()
         self.db.handle.close()
-        wx.info("[OBJ] ex_web_data : __del__ called")
+        # wx.info("[OBJ] ex_web_data : __del__ called")
 
     def url_encode(self, str):
         return parse.quote(str)
@@ -305,6 +310,8 @@ class ex_web_data(object):
         self.db.cursor.executemany(sql, dd_array)
         self.db.handle.commit()
 
+
+
     def db_load_into_daily_data(self, dd_df=None, pre_id = '',  mode='basic', type='cq'):
         wx = lg.get_handle()
 
@@ -336,6 +343,20 @@ class ex_web_data(object):
             else:
                 wx.info("[db_load_into_daily_data]: TYPE = qfq, pre_id ( {} )is NOT Match".format(pre_id))
                 return  None
+        elif(type == 'bt_qfq'):
+            if re.match('002',pre_id) is not None:
+                t_name = self.bt_dd_qfq_002
+            elif re.match('30',pre_id) is not None:
+                t_name = self.bt_dd_qfq_30
+            elif re.match('60',pre_id) is not None:
+                t_name = self.bt_dd_qfq_60
+            elif re.match('00',pre_id) is not None:
+                t_name = self.bt_dd_qfq_00
+            elif re.match('68',pre_id) is not None:
+                t_name = self.bt_dd_qfq_68
+            else:
+                wx.info("[db_load_into_daily_data]: TYPE = bt_qfq, pre_id ( {} )is NOT Match".format(pre_id))
+                return  None
         else:
             wx.info("[db_load_into_daily_data]: TYPE ( {} ) is NOT Match")
             return None
@@ -359,8 +380,15 @@ class ex_web_data(object):
             sql = "REPLACE INTO " + t_name + " SET id=%s, date=%s, open=%s, high=%s, low=%s, " \
                                              "close=%s, pre_close=%s, chg=%s,  pct_chg=%s,vol=%s, amount=%s"
 
-        self.db.cursor.executemany(sql, dd_array)
-        self.db.handle.commit()
+        i_scale = 1000
+        for i in range(0, len(dd_array), i_scale):
+            tmp_array = dd_array[i: i + i_scale]
+            wx.info("[db_load_into_daily_data][{}][{}] Loaded {} ~ {} , total {} " .format(type, t_name, i, i + i_scale, len(dd_array)))
+            self.db.cursor.executemany(sql, tmp_array)
+            self.db.handle.commit()
+
+        # self.db.cursor.executemany(sql, dd_array)
+        # self.db.handle.commit()
         # wx.info(dd_array)
 
     def east_ws_json_parse(self, json_str=None):

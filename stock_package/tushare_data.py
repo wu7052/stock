@@ -27,8 +27,27 @@ class ts_data:
         return self.api.trade_cal(exchange='', start_date=yesterday, end_date=today)
 
     def acquire_factor(self, date):
-        df_factor = self.api.query('adj_factor', trade_date=date)
+        wx = lg.get_handle()
+        try:
+            df_factor = self.api.query('adj_factor', trade_date=date)
+        except Exception as e:
+            wx.info("tushare exception: {}... sleep 10 seconds, retry....".format(e))
+            time.sleep(10)
+            df_factor = self.api.query('adj_factor', trade_date=date)
         return df_factor
+
+    def acquire_qfq_period(self, id, start_date, end_date):
+        wx = lg.get_handle()
+        try:
+            if len(id)<9:
+                wx.info("[acquire_qfq_period] ID {} error ".format(id))
+                return None
+            qfq_df = ts.pro_bar(ts_code=id, adj='qfq', start_date=start_date, end_date=end_date)
+        except Exception as e:
+            wx.info("tushare exception: {}... sleep 10 seconds, retry....".format(e))
+            time.sleep(10)
+            qfq_df = ts.pro_bar(ts_code=id, adj='qfq', start_date=start_date, end_date=end_date)
+        return qfq_df
 
 
     def acquire_daily_data(self, code, period, type ='cq'):
