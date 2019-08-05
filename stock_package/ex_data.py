@@ -148,7 +148,7 @@ class ex_web_data(object):
         i_scale = 1000
         for i in range(0, len(ind_arry), i_scale):
             tmp_arry = ind_arry[i : i+i_scale]
-            print("[%s] Loaded %d ~ %d , total %d " % (t_name, i, i + i_scale, len(ind_arry)))
+            wx.info("[db_load_into_ind_xxx][%s] Loaded %d ~ %d , total %d " .format(t_name, i, i + i_scale, len(ind_arry)))
             self.db.cursor.executemany(sql, tmp_arry)
             self.db.handle.commit()
 
@@ -361,7 +361,7 @@ class ex_web_data(object):
             wx.info("[db_load_into_daily_data]: TYPE ( {} ) is NOT Match")
             return None
 
-        if dd_df is None or t_name is None:
+        if dd_df is None or dd_df.empty or t_name is None:
             wx.info("[db_load_into_daily_data] Err: Daily Data Frame or Table Name is Empty,")
             return -1
         dd_array = dd_df.values.tolist()

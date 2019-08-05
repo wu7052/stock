@@ -121,7 +121,7 @@ class back_trader:
                 qfq_df = qfq_df.append(qfq_tmp)
                 wx.info("[back_trader][_process_abnormal_qfq_data] Acquired {} qfq Data {} - {} ".
                         format(id, self.f_begin_date, self.f_end_date))
-
+        return qfq_df
         # qfq_df.sort_values('id', ascending=True, inplace=True)
         # ret_dd_qfq_dict[key].reset_index(drop=True, inplace=True)
 
@@ -250,11 +250,16 @@ class back_trader:
                                                       type='bt_qfq')
 
         qfq_abnormal_df = self._process_abnormal_qfq_data(id_df=factor_abnormal_df)
-        qfq_abnormal_df.rename(
-            columns={'ts_code': 'id', 'trade_date': 'date', 'change': 'chg'}, inplace=True)
-        qfq_abnormal_df['id'] = qfq_abnormal_df['id'].apply(lambda x: x[0:6])
-        regx_prefix = {'^002':'002','^00[0,1,3-9]':'00','^60':'60','^30':'30','^68':'68'}
-        for key in regx_prefix.keys():
-            qfq_abnormal_df_tmp = qfq_abnormal_df.loc[qfq_abnormal_df['dd'].str.contains(key) ]
-            self.web_data.db_load_into_daily_data(dd_df=qfq_abnormal_df_tmp, pre_id=regx_prefix[key], mode='basic',
-                                                  type='bt_qfq')
+        if qfq_abnormal_df is None or qfq_abnormal_df.empty:
+            wx.info("[back trader][abnormal stock qfq data] is None, 全部前复权数据处理完毕 ")
+        else:
+            qfq_abnormal_df.rename(
+                columns={'ts_code': 'id', 'trade_date': 'date', 'change': 'chg'}, inplace=True)
+            qfq_abnormal_df['id'] = qfq_abnormal_df['id'].apply(lambda x: x[0:6])
+            qfq_abnormal_df.reset_index(drop=True, inplace=True)
+            regx_prefix = {'^002':'002','^00[0,1,3-9]':'00','^60':'60','^30':'30','^68':'68'}
+            for key in regx_prefix.keys():
+                qfq_abnormal_df_tmp = qfq_abnormal_df.loc[qfq_abnormal_df['id'].str.contains(key) ]
+                self.web_data.db_load_into_daily_data(dd_df=qfq_abnormal_df_tmp, pre_id=regx_prefix[key], mode='basic',
+                                                    type='bt_qfq')
+            wx.info("[back trader][异常数据处理完毕], 全部前复权数据处理完毕 ")

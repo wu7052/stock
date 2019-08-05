@@ -30,14 +30,14 @@ from functions import *
 # 从上证、深证 网站更新 A 股基础信息
 # 从申银万国 更新 行业分类
 """
-wx.info("============================[update_sh_basic_info_2]上证主板基础信息更新==========================================")
-update_sh_basic_info_2()
-wx.info("============================[update_sh_basic_info_kc]科创板基础信息更新==========================================")
-update_sh_basic_info_kc()
-wx.info("============================[update_sz_basic_info]深证主板、中小板、创业板基础信息更新==========================================")
-update_sz_basic_info()
-wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
-update_sw_industry_into_basic_info()
+# wx.info("============================[update_sh_basic_info_2]上证主板基础信息更新==========================================")
+# update_sh_basic_info_2()
+# wx.info("============================[update_sh_basic_info_kc]科创板基础信息更新==========================================")
+# update_sh_basic_info_kc()
+# wx.info("============================[update_sz_basic_info]深证主板、中小板、创业板基础信息更新==========================================")
+# update_sz_basic_info()
+# wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
+# update_sw_industry_into_basic_info()
 
 
 """####################################################################
@@ -109,8 +109,8 @@ update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
 #  f_date='' 默认时间是最近交易日，或指定回测日期
 #  f_name='' 指定过滤规则文件名
 """
-wx.info("============================[filter_A 选股]==========================================")
-filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf')
+# wx.info("============================[filter_A 选股]==========================================")
+# filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf')
 
 """
 # 根据规则回测 过滤规则的准确性
