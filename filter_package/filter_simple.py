@@ -8,8 +8,9 @@ import pandas as pd
 class filter_fix:
 
     # f_conf 指定策略文件路径
-    # date 指定回测日期，默认是最近交易日
-    def __init__(self, f_conf='', f_date=''):
+    # f_end_date 指定回测结束日期，默认是最近交易日
+    # f_start_date 指定回测开始日期
+    def __init__(self, f_conf='', f_start_date='',  f_end_date='', data_src='qfq'):
         wx = lg.get_handle()
         try:
             self.f_conf = conf_handler(conf=f_conf)
@@ -28,12 +29,20 @@ class filter_fix:
             self.daily_cq_t_00 = self.h_conf.rd_opt('db', 'daily_table_cq_00')
             self.daily_cq_t_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
             self.daily_cq_t_60 = self.h_conf.rd_opt('db', 'daily_table_cq_60')
+            self.daily_cq_t_68 = self.h_conf.rd_opt('db', 'daily_table_cq_68')
             self.daily_cq_t_002 = self.h_conf.rd_opt('db', 'daily_table_cq_002')
 
             self.daily_qfq_t_00 = self.h_conf.rd_opt('db', 'daily_table_qfq_00')
             self.daily_qfq_t_30 = self.h_conf.rd_opt('db', 'daily_table_qfq_30')
             self.daily_qfq_t_60 = self.h_conf.rd_opt('db', 'daily_table_qfq_60')
+            self.daily_qfq_t_68 = self.h_conf.rd_opt('db', 'daily_table_qfq_68')
             self.daily_qfq_t_002 = self.h_conf.rd_opt('db', 'daily_table_qfq_002')
+
+            self.bt_daily_qfq_t_00 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_00')
+            self.bt_daily_qfq_t_30 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_30')
+            self.bt_daily_qfq_t_60 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_60')
+            self.bt_daily_qfq_t_68 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_68')
+            self.bt_daily_qfq_t_002 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_002')
 
             host = self.h_conf.rd_opt('db', 'host')
             database = self.h_conf.rd_opt('db', 'database')
@@ -43,12 +52,16 @@ class filter_fix:
             wx.info("[OBJ] filter_fix : __init__ called")
 
             # 指定日期，用于回测，默认日期是当前最近交易日
-            if f_date == '':
+            if data_src == 'cq' or data_src== 'qfq':
                 sql = "SELECT date from " + self.daily_cq_t_00 + " order by date desc limit 1"
                 df_date = self.db._exec_sql(sql=sql)
-                self.date = df_date.iloc[0, 0]
-            else:
-                self.date = f_date
+                self.f_end_date = df_date.iloc[0, 0]
+                self.f_start_date = (date.today() + timedelta(days=-180)).strftime('%Y%m%d')
+            elif data_src == 'bt_qfq':
+                self.f_end_date = f_end_date
+                self.f_start_date = f_start_date
+
+            self.data_src = data_src
         except Exception as e:
             raise e
 
@@ -58,30 +71,37 @@ class filter_fix:
 
     """
     函数说明：PE 小于 pe（50）
+    不使用 动态前复权数据
     """
 
     def filter_pe(self):
-        sql = "SELECT id, pe from " + self.daily_cq_t_00 + " where pe between 1 and " + self.pe + " and date = " + self.date + " union " \
-                "SELECT id, pe from " + self.daily_cq_t_30 + " where pe between 1 and " + self.pe + " and date = " + self.date + " union " \
-                "SELECT id, pe from " + self.daily_cq_t_60 + " where pe between 1 and " + self.pe + " and date = " + self.date + " union " \
-                "SELECT id, pe from " + self.daily_cq_t_002 + " where pe between 1 and " + self.pe + " and date = " + self.date
+        sql = "SELECT id, pe from " + self.daily_cq_t_00 + " where pe between 1 and " + self.pe + " and date = " + self.f_end_date + " union " \
+                "SELECT id, pe from " + self.daily_cq_t_30 + " where pe between 1 and " + self.pe + " and date = " + self.f_end_date + " union " \
+                "SELECT id, pe from " + self.daily_cq_t_60 + " where pe between 1 and " + self.pe + " and date = " + self.f_end_date + " union " \
+                "SELECT id, pe from " + self.daily_cq_t_002 + " where pe between 1 and " + self.pe + " and date = " + self.f_end_date
         df_pe_grp = self.db._exec_sql(sql=sql)
         return df_pe_grp
 
     """
-    函数说明：流动股金额低于 total_amount(100亿）
+    函数说明：流动股金额低于 total_amount, 
+    不使用 动态前复权数据
     """
 
-    def filter_tt_amount(self,data_src='cq'):
-        if data_src == 'qfq':
-            tname_arr = [self.daily_qfq_t_00, self.daily_qfq_t_30, self.daily_qfq_t_002, self.daily_qfq_t_60]
-        elif data_src == 'cq':
-            tname_arr = [self.daily_cq_t_00, self.daily_cq_t_30, self.daily_cq_t_002, self.daily_cq_t_60]
+    def filter_tt_amount(self):
+        # if self.data_src == 'qfq':
+        #     tname_arr = [self.daily_qfq_t_00, self.daily_qfq_t_30, self.daily_qfq_t_002, self.daily_qfq_t_60]
+        # elif self.data_src == 'cq':
+        #     tname_arr = [self.daily_cq_t_00, self.daily_cq_t_30, self.daily_cq_t_002, self.daily_cq_t_60]
+        # elif self.data_src == 'bt_qfq':
+        #     tname_arr = [self.bt_daily_qfq_t_00, self.bt_daily_qfq_t_30, self.bt_daily_qfq_t_002, self.bt_daily_qfq_t_60]
+
+        tname_arr = [self.daily_cq_t_00, self.daily_cq_t_30, self.daily_cq_t_002, self.daily_cq_t_60, self.daily_cq_t_68]
+
         df_amount_grp = pd.DataFrame()
         for t_name in tname_arr:
             sql = "SELECT la.id as id, la.flow_shares * dd.close as tt_amount FROM stock.list_a as la " \
                   " left join " + t_name + " as dd on dd.id = la.id" \
-                  " where dd.date = " + self.date + " and la.flow_shares * dd.close between 1 and 10000*" + self.total_amount
+                  " where dd.date = " + self.f_end_date + " and la.flow_shares * dd.close between 1 and 10000*" + self.total_amount
             if df_amount_grp.empty:
                 df_amount_grp = self.db._exec_sql(sql=sql)
             else:
@@ -94,14 +114,20 @@ class filter_fix:
     函数说明：股价低于 high_price (50元) 的股票列表
     """
 
-    def filter_high_price(self,data_src='cq'):
-        if data_src == 'qfq':
-            tname_arr = [self.daily_qfq_t_00, self.daily_qfq_t_30, self.daily_qfq_t_002, self.daily_qfq_t_60]
-        elif data_src == 'cq':
-            tname_arr = [self.daily_cq_t_00, self.daily_cq_t_30, self.daily_cq_t_002, self.daily_cq_t_60]
+    def filter_high_price(self):
+        if self.data_src == 'qfq':
+            tname_arr = [self.daily_qfq_t_00, self.daily_qfq_t_30, self.daily_qfq_t_002,
+                         self.daily_qfq_t_60, self.daily_qfq_t_68]
+        elif self.data_src == 'cq':
+            tname_arr = [self.daily_cq_t_00, self.daily_cq_t_30, self.daily_cq_t_002,
+                         self.daily_cq_t_60, self.daily_cq_t_68]
+        elif self.data_src == 'bt_qfq':
+            tname_arr = [self.bt_daily_qfq_t_00, self.bt_daily_qfq_t_30, self.bt_daily_qfq_t_002,
+                         self.bt_daily_qfq_t_60, self.bt_daily_qfq_t_68]
+
         df_high_price_grp = pd.DataFrame()
         for t_name in tname_arr:
-            sql = "SELECT id, high from " + t_name + " where date =  " + self.date + " and high < " + self.high_price
+            sql = "SELECT id, high from " + t_name + " where date =  " + self.f_end_date + " and high < " + self.high_price
             if (df_high_price_grp.empty):
                 df_high_price_grp = self.db._exec_sql(sql=sql)
             else:
@@ -113,34 +139,61 @@ class filter_fix:
     函数说明：最近收盘价 及 MA5 都低于 MA55  的股票列表
     """
 
-    def filter_below_ma55(self,data_src='cq'):
-        if data_src == 'qfq':
+    def filter_below_ma55(self,):
+        if self.data_src == 'qfq':
             t_ma_00 = self.h_conf.rd_opt('db', 'ma_qfq_table_00')
             t_ma_30 = self.h_conf.rd_opt('db', 'ma_qfq_table_30')
             t_ma_60 = self.h_conf.rd_opt('db', 'ma_qfq_table_60')
+            t_ma_68 = self.h_conf.rd_opt('db', 'ma_qfq_table_68')
             t_ma_002 = self.h_conf.rd_opt('db', 'ma_qfq_table_002')
-        elif data_src == 'cq':
+            t_dd_00 = self.daily_qfq_t_00
+            t_dd_30 = self.daily_qfq_t_30
+            t_dd_60 = self.daily_qfq_t_60
+            t_dd_68 = self.daily_qfq_t_68
+            t_dd_002 = self.daily_qfq_t_002
+        elif self.data_src == 'bt_qfq':
+            t_ma_00 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_00')
+            t_ma_30 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_30')
+            t_ma_60 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_60')
+            t_ma_68 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_68')
+            t_ma_002 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_002')
+            t_dd_00 = self.bt_daily_qfq_t_00
+            t_dd_30 = self.bt_daily_qfq_t_30
+            t_dd_60 = self.bt_daily_qfq_t_60
+            t_dd_68 = self.bt_daily_qfq_t_68
+            t_dd_002 = self.bt_daily_qfq_t_002
+        elif self.data_src == 'cq':
             t_ma_00 = self.h_conf.rd_opt('db', 'ma_cq_table_00')
             t_ma_30 = self.h_conf.rd_opt('db', 'ma_cq_table_30')
             t_ma_60 = self.h_conf.rd_opt('db', 'ma_cq_table_60')
+            t_ma_68 = self.h_conf.rd_opt('db', 'ma_cq_table_68')
             t_ma_002 = self.h_conf.rd_opt('db', 'ma_cq_table_002')
+            t_dd_00 = self.daily_cq_t_00
+            t_dd_30 = self.daily_cq_t_30
+            t_dd_60 = self.daily_cq_t_60
+            t_dd_68 = self.daily_cq_t_68
+            t_dd_002 = self.daily_cq_t_002
 
-        tname_arr = [[t_ma_00, self.daily_cq_t_00], [t_ma_30, self.daily_cq_t_30],
-                     [t_ma_60, self.daily_cq_t_60], [t_ma_002, self.daily_cq_t_002]]
-        df_blow_ma55_grp = pd.DataFrame()
+        tname_arr = [[t_ma_00, t_dd_00], [t_ma_30, t_dd_30], [t_ma_60, t_dd_60],
+                     [t_ma_002, t_dd_002], [t_ma_68, t_dd_68]]
+        df_below_ma55_grp = pd.DataFrame()
         for t_name in tname_arr:
             # wx.info("{} - {}".format(t_name[0], t_name[1]))
             sql = "SELECT ma.id, dd.close, ma.ma_5, ma.ma_55 FROM " + t_name[0] + " as ma " \
                                                                                   " left join " + t_name[
                       1] + " as dd  on dd.id = ma.id and dd.date = ma.date " \
-                           " where dd.date = " + self.date + " and ma.ma_5 < ma.ma_55 and dd.close < ma.ma_55;"
-            if (df_blow_ma55_grp.empty):
-                df_blow_ma55_grp = self.db._exec_sql(sql=sql)
+                           " where dd.date = " + self.f_end_date + " and ma.ma_5 < ma.ma_55 and dd.close < ma.ma_55;"
+            if df_below_ma55_grp is None or df_below_ma55_grp.empty:
+                df_below_ma55_grp = self.db._exec_sql(sql=sql)
             else:
-                df_blow_ma55_grp = df_blow_ma55_grp.append(self.db._exec_sql(sql=sql))
-        df_blow_ma55_grp.reset_index(drop=True, inplace=True)
+                df_below_ma55_grp = df_below_ma55_grp.append(self.db._exec_sql(sql=sql))
 
-        return df_blow_ma55_grp
+        if df_below_ma55_grp is None or df_below_ma55_grp.empty:
+            return None
+        else:
+            df_below_ma55_grp.reset_index(drop=True, inplace=True)
+
+        return df_below_ma55_grp
 
     def _acquire_sides(self, id, x, df_high, dir="left"):
         # 取出 目标 ID , index 会带入，所以[0,0]不对
@@ -208,10 +261,12 @@ class filter_fix:
 
         # 涨幅 变整数，便于统计数量
         df_side_left['pct_chg_int'] = df_side_left['pct_chg'].astype(int).copy()
-        df_side_left.loc[df_side_left[(df_side_left['pct_chg'] >= 11)].index, ['pct_chg_int']] = 0
+        df_side_left.loc[df_side_left[(df_side_left['pct_chg'] >= 11)].index, ['pct_chg_int']] = 10
+        df_side_left.loc[df_side_left[(df_side_left['pct_chg'] <= -11)].index, ['pct_chg_int']] = -10
 
         df_side_right['pct_chg_int'] = df_side_right['pct_chg'].astype(int).copy()
-        df_side_right.loc[df_side_right[(df_side_right['pct_chg'] >= 11)].index, ['pct_chg_int']] = 0
+        df_side_right.loc[df_side_right[(df_side_right['pct_chg'] >= 11)].index, ['pct_chg_int']] = 10
+        df_side_right.loc[df_side_right[(df_side_right['pct_chg'] <= -11)].index, ['pct_chg_int']] = -10
 
         # 读取 高点左侧 涨幅的权重表
         high_left_power_conf = dict(self.f_conf.rd_sec(sec='filter_high_left_power_table'))
@@ -292,7 +347,7 @@ class filter_fix:
         low_right = df_right_side['low'].min()
         diff = high - low_right
 
-        # close = df_right_side.loc[df_right_side[(df_right_side['date'] == self.date)].index, 'close']
+        # close = df_right_side.loc[df_right_side[(df_right_side['date'] == self.f_end_date)].index, 'close']
         close = df_right_side.tail(1)['close'].values[0]
         min_golden_pct = 0
         for pct in golden_pct:
@@ -309,21 +364,38 @@ class filter_fix:
                3）判断左侧 力度，高点左侧 5天、10天、20天、30天内 是否有超过 6% 的单日涨幅
     """
 
-    def filter_side(self,data_src='cq'):
+    def filter_side(self):
         wx = lg.get_handle()
-        start_date = (date.today() + timedelta(days=-180)).strftime('%Y%m%d')
-        if data_src == 'qfq':
-            tname_arr = [self.daily_qfq_t_00, self.daily_qfq_t_30, self.daily_qfq_t_60, self.daily_qfq_t_002]
-        elif data_src == 'cq':
-            tname_arr = [self.daily_cq_t_00, self.daily_cq_t_30, self.daily_cq_t_60, self.daily_cq_t_002]
+
+        # if self.data_src == 'bt_qfq':
+        #     start_date = self.f_start_date
+        # elif self.data_src == 'cq' or self.data_src == 'qfq':
+        #     start_date = (date.today() + timedelta(days=-180)).strftime('%Y%m%d')
+        # else:
+        #     wx.info("[Filter_fix] [filter_side] data src [{}], Err. ".format(self.data_src))
+        #     return
+
+        if self.data_src == 'qfq':
+            tname_arr = [self.daily_qfq_t_68, self.daily_qfq_t_00, self.daily_qfq_t_30, self.daily_qfq_t_60,
+                         self.daily_qfq_t_002 ]
+        elif self.data_src == 'bt_qfq':
+            tname_arr = [self.bt_daily_qfq_t_00, self.bt_daily_qfq_t_30, self.bt_daily_qfq_t_60,
+                         self.bt_daily_qfq_t_002, self.bt_daily_qfq_t_68]
+        elif self.data_src == 'cq':
+            tname_arr = [self.daily_cq_t_00, self.daily_cq_t_30, self.daily_cq_t_60,
+                         self.daily_cq_t_002,  self.daily_cq_t_68]
         arr_filter_side = []
         for t_name in tname_arr:
             sql = "select id, date, high, low, close, 100*(close-pre_close)/pre_close as pct_chg from " + t_name + \
-                  " where date >  " + start_date
+                  " where date >  " + self.f_start_date
 
             # sql = "select id, date, high, low, close, 100*(close-pre_close)/pre_close as pct_chg from "+ self.daily_cq_t_30 +" where id = 300576 and date >  " + start_date
 
             df_all_tmp = self.db._exec_sql(sql=sql)
+            if df_all_tmp is None or df_all_tmp.empty:
+                wx.info("[filter_side] {} 数据表未检出任何记录，继续处理...".format(t_name))
+                continue
+
             df_all = df_all_tmp[-df_all_tmp.high.isin([0])]
             df_high = df_all.sort_values('high', ascending=False).groupby('id', as_index=False).first()
             wx.info("[Filter] Completed Located the Highest Price Point in {}".format(t_name))

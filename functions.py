@@ -342,7 +342,7 @@ def update_daily_data_from_ts(period=-1, type='cq'):
     # sz_data = sz_web_data()
     # sh_data = sh_web_data()
     name_arr = (('002%', '.SZ', '中小板'), ('60%', '.SH', '上证 主板'), ('00%', '.SZ', '深证 主板'),
-                ('30%', '.SZ', '创业板'))
+                ('30%', '.SZ', '创业板'),('68%', '.SH', '科创板'))
     try:
         for name in name_arr:
             id_array = web_data.db_fetch_stock_id(pre_id=name[0])
@@ -355,7 +355,8 @@ def update_daily_data_from_ts(period=-1, type='cq'):
                     time.sleep(10)
                     dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
                 dd_df['ts_code'] = id[0]
-                web_data.db_load_into_daily_data(dd_df=dd_df, pre_id=name[0], mode='basic', type=type)
+                web_data.db_load_into_daily_data(dd_df=dd_df, pre_id=name[0], mode='basic', type='cq')
+                web_data.db_load_into_daily_data(dd_df=dd_df, pre_id=name[0], mode='basic', type='qfq')
                 wx.info("[update_daily_data_from_ts] {}/{} completed".format(counter, len(id_array)))
                 counter += 1
     except Exception as e:
@@ -365,11 +366,12 @@ def update_daily_data_from_ts(period=-1, type='cq'):
 
 
 # @wx_timer  用计时器 无法return 数据出来
-def update_last_day_qfq_data_from_ts():
+# start = 0 表示从今天开始， -1 表示从昨天开始（补数据）
+def update_last_day_qfq_data_from_ts(start=0):
     wx = lg.get_handle()
     ts = ts_data()
     web_data = ex_web_data()
-    for d1 in range(0, -30, -1):
+    for d1 in range(start, -30, -1):
         today = (date.today() + timedelta(days=d1)).strftime('%Y%m%d')
         df1 = ts.acquire_factor(date=today)
         if df1.empty == False:
@@ -745,25 +747,27 @@ def ws_supplement():
 
 
 @wx_timer
-def update_ind_ma_df(fresh=False, data_src='cq'):
+def update_ind_ma_df(fresh=False, data_src='cq', bt_start_date='', bt_end_date=''):
     wx = lg.get_handle()
     web_data = ex_web_data()
-    pre_id = ['60%', '002%', '30%', '00%', '68%']
+    pre_id = ['68%', '002%', '30%', '00%', '60%']
+
+    if data_src=='bt_qfq':
+        if bt_end_date == '' or  bt_start_date == '':
+            wx.info("[update_ind_ma_df] bt_qfq mode:  bt_start_date and bt_end_date Can't Empty, Err ")
+            return
     ma = ma_kits()
     for pre in pre_id:
-        id_arr = web_data.db_fetch_stock_id(pre_id=pre)
-        if len(id_arr)>0:
-            ma_ret = ma.calc_arr(stock_arr=id_arr, fresh=fresh, data_src=data_src)
-            web_data.db_load_into_ind_xxx(ind_type='ma', ind_df=ma_ret, stock_type=pre, data_src=data_src)
-            wx.info("[update_ind_ma_df]=========== {} {} MA =========== Data Loaded ALL [{}]".format(pre, data_src, len(id_arr)))
+        # id_arr = web_data.db_fetch_stock_id(pre_id=pre)
+        # if len(id_arr)>0:
+        ma_ret = ma.calc_arr(pre_id=pre, fresh=fresh, data_src=data_src, bt_start_date=bt_start_date, bt_end_date=bt_end_date)
+        if ma_ret is None or ma_ret.empty:
+            wx.info("[update_ind_ma_df]=========== {} {} MA =========== Data Empty ".format(pre, data_src))
         else:
-            wx.info("[update_ind_ma_df]=========== {} {} Stock =========== Empty [{}]".format(pre, data_src, len(id_arr)))
-
-
-"""
-# 废弃函数，太慢了
-# 更新Indicator MA 表 移动均值, 逐条更新，速度较慢
-"""
+            web_data.db_load_into_ind_xxx(ind_type='ma', ind_df=ma_ret, stock_type=pre, data_src=data_src)
+            wx.info("[update_ind_ma_df]=========== {} {} MA =========== Data Loaded ALL ".format(pre, data_src))
+        # else:
+        #     wx.info("[update_ind_ma_df]=========== {} {} Stock =========== Empty [{}]".format(pre, data_src, len(id_arr)))
 
 
 @wx_timer
@@ -1096,38 +1100,78 @@ def report_cross_dgj_ws(rp=None, ws_days=180, dgj_days=180):
 
 
 @wx_timer
-def filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf'):
+def filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf', f_start_date='', f_end_date=''):
     wx = lg.get_handle()
-    filter_a = filter_fix(f_conf=f_name)
+    filter_a = filter_fix(f_conf=f_name, f_start_date=f_start_date, f_end_date=f_end_date, data_src=data_src)
+    target_dict = {}
+
     # 除权表
     df_pe_grp = filter_a.filter_pe()
-    wx.info("[Filter PE] {} founded ".format(len(df_pe_grp)))
+    if df_pe_grp is None or df_pe_grp.empty:
+        wx.info("[Filter PE] founded 0")
+        df_pe_grp = pd.DataFrame()
+    else:
+        wx.info("[Filter PE] {} founded ".format(len(df_pe_grp)))
+    target_dict['PE Group'] = df_pe_grp
 
     # 前复权表
-    df_amount_grp = filter_a.filter_tt_amount(data_src=data_src)
-    wx.info("[Filter Total Amount] {} founded".format(len(df_amount_grp)))
-    df_target = pd.merge(df_pe_grp, df_amount_grp)
+    df_amount_grp = filter_a.filter_tt_amount()
+    if df_amount_grp is None or df_amount_grp.empty:
+        wx.info("[Filter Total Amount] founded 0")
+        df_amount_grp = pd.DataFrame()
+    else:
+        wx.info("[Filter Total Amount] {} founded".format(len(df_amount_grp)))
+    target_dict['Amount Group'] = df_amount_grp
+
+    # df_target = pd.merge(df_pe_grp, df_amount_grp)
 
     # 前复权表
-    df_below_ma55_grp = filter_a.filter_below_ma55(data_src=data_src)
-    wx.info("[Filter Below Ma 55] {} founded".format(len(df_below_ma55_grp)))
-    df_target = pd.merge(df_target, df_below_ma55_grp)
+    df_below_ma55_grp = filter_a.filter_below_ma55()
+    if df_below_ma55_grp is None or df_below_ma55_grp.empty:
+        wx.info("[Filter Below Ma 55] founded 0")
+        df_below_ma55_grp = pd.DataFrame()
+    else:
+        wx.info("[Filter Below Ma 55] {} founded".format(len(df_below_ma55_grp)))
+    target_dict['Ma55 Group'] = df_below_ma55_grp
+
+    # df_target = pd.merge(df_target, df_below_ma55_grp)
 
     # 前复权表
-    df_high_price_grp = filter_a.filter_high_price(data_src=data_src)
-    wx.info("[Filter High Price] {} founded".format(len(df_high_price_grp)))
+    df_high_price_grp = filter_a.filter_high_price()
+    if df_high_price_grp is None or df_high_price_grp.empty:
+        wx.info("[Filter High Price] founded 0")
+        df_high_price_grp = pd.DataFrame()
+    else:
+        wx.info("[Filter High Price] {} founded".format(len(df_high_price_grp)))
+    target_dict['High Price Group'] = df_high_price_grp
 
-    df_target = pd.merge(df_target, df_high_price_grp)
+    df_target = pd.DataFrame()
+    for key in target_dict.keys():
+        if target_dict[key].empty:
+            choose = input("[filter_A] "+key+" 结果为空，请选择是否继续 Y/N : ")
+            if choose.strip() == 'N' or choose.strip() == 'n':
+                wx.info("[filter_A] 筛选结果为空，因为 {} 为空".format(key))
+                return None
+            else:
+                wx.info("[filter_A] {} 筛选结果为空，跳过此条件继续筛选")
+                continue
+        elif len(df_target) == 0:
+            df_target = target_dict[key]
+        else:
+            df_target = pd.merge(df_target, target_dict[key])
+
+
+    # df_target = pd.merge(df_target, df_high_price_grp)
     df_target.rename(columns={'id': '股票代码', 'tt_amount': '流通市值', 'close': '最近交易日收盘价',
                               'ma_5': '5日均值', 'ma_55': '55日均值', 'high': '最近交易日最高价'}, inplace=True)
-    wx.info("[Filter_A Completed] {} founded".format(len(df_target)))
+    wx.info("[Filter_A] [PE + Amount + Ma55 + HighPrice] {} founded".format(len(df_target)))
 
     reporter = ws_rp()
-    reporter.output_table(dd_df=df_target.round(2), sheet_name='PE_MA55_股本_股价筛选结果',
-                          filename='选股清单_1_' + data_src, type='.xlsx', index=False)
+    # reporter.output_table(dd_df=df_target.round(2), sheet_name='PE_MA55_股本_股价筛选结果',
+    #                       filename='选股清单_1_' + data_src, type='.xlsx', index=False)
 
     # 前复权表
-    df_filter_side = filter_a.filter_side(data_src=data_src)
+    df_filter_side = filter_a.filter_side()
     reporter.output_table(dd_df=df_filter_side, sheet_name='涨幅筛选结果',
                           filename='选股清单_2_' + data_src, type='.xlsx', index=False)
 

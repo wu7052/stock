@@ -17,16 +17,20 @@ from filter_package import filter_fix
 from assess_package import back_trader
 from functions import *
 
-bt = back_trader(f_date='20190130', f_b_days=-100,  f_name='filter_rules\\filter_001.conf')
-bt.clear_bt_data()
-bt.get_qfq_data()
+# bt = back_trader(f_date='20190130', f_b_days=-100,  f_name='filter_rules\\filter_001.conf')
+# bt.clear_bt_data()
+# bt.get_qfq_data()
 
 
 # update_sh_basic_info_kc()
 # update_sh_basic_info_2()
 
 # filter_A(data_src='cq')
-# filter_A(data_src='qfq')
+filter_A(data_src='qfq')
+# update_daily_data_from_ts(period = -1)
+# wx.info("============================[update_last_day_qfq_data_from_ts]更新个股前复权数据==========================================")
+# qfq_id_arr = update_last_day_qfq_data_from_ts(start= -1)
+
 # update_daily_data_from_eastmoney(supplement=False)
 # update_daily_data_from_eastmoney(date= '20190712',supplement=False)
 # update_daily_data_from_ts(period = -240, type='qfq')

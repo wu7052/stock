@@ -59,8 +59,9 @@ qfq_id_arr = update_last_day_qfq_data_from_ts()
 
 """####################################################################
 # 从tushare 获取前一天的 交易数据, type = 'cq' 表示除权价格； type = 'qfq' 表示前复权价格
+# 同时更新  'cq' \ 'qfq' 两类表
 """
-# update_daily_data_from_ts(period = -1, type='cq')
+# update_daily_data_from_ts(period = -1)
 
 
 """####################################################################

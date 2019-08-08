@@ -8,49 +8,23 @@ from stock_package import ts_data, ex_web_data, ma_kits, psy_kits
 import re
 
 class back_trader:
-    def __init__(self, f_date='', f_b_days=-240, f_name=''):
+    def __init__(self, f_date='', f_days=-240, f_name=''):
         wx = lg.get_handle()
         try:
-            if f_date != '':
+            if f_days >= 0 and f_date != '':
+                self.f_begin_date = f_date
+                f_begin_date = datetime.strptime(self.f_begin_date, "%Y%m%d")
+                self.f_end_date = (f_begin_date + timedelta(days=f_days)).strftime('%Y%m%d')
+            elif f_date != '':
                 self.f_end_date = f_date
+                f_end_date = datetime.strptime(self.f_end_date, "%Y%m%d")
+                self.f_begin_date = (f_end_date + timedelta(days=f_days)).strftime('%Y%m%d')
             else:
-                wx.info("[back_trader] __init__ Failed, trade_date is Empty")
+                wx.info("[back_trader] __init__ Failed, f_date is Empty")
                 raise RuntimeError('[back_trader] __init__ Failed, trade_date is Empty')
 
-            if f_name != '':
-                # self.f_name = f_name
-                self.filter = filter_fix(f_conf=f_name, f_date=f_date)
-            else:
-                wx.info("[back_trader] __init__ Failed, Filter Rule is Empty")
-                raise RuntimeError('[back_trader] __init__ Failed, Filter Rule is Empty')
-
             self.h_conf = conf_handler(conf="stock_analyer.conf")
 
-            if f_b_days >= 0:
-                f_end_date = datetime.strptime(self.f_end_date, "%Y%m%d")
-                self.f_begin_date = (
-                        f_end_date + timedelta(days=int(self.h_conf.rd_opt('back_assess', 'back_days')))).strftime(
-                    '%Y%m%d')
-                wx.info("[back_trader] input back days >=0, read {} days from Conf ".format(
-                    self.h_conf.rd_opt('back_assess', 'back_days')))
-            else:
-                f_end_date = datetime.strptime(self.f_end_date, "%Y%m%d")
-                self.f_begin_date = (f_end_date + timedelta(days=f_b_days)).strftime('%Y%m%d')
-
-            """
-            self.f_conf = conf_handler(conf="filter_rules\\filter_001.conf")
-            self.h_conf = conf_handler(conf="stock_analyer.conf")
-            self.pe = self.f_conf.rd_opt('filter_fix', 'pe')
-            self.total_amount = self.f_conf.rd_opt('filter_fix', 'total_amount')
-            self.high_price = self.f_conf.rd_opt('filter_fix', 'high_price')
-            self.days = self.f_conf.rd_opt('filter_fix', 'below_ma55_days')
-            self.filter_growth_below_pct = self.f_conf.rd_opt('filter_fix', 'filter_growth_below_pct')
-            self.filter_high_left_power_request = self.f_conf.rd_opt('filter_fix', 'filter_high_left_power_request')
-            self.filter_high_right_power_request = self.f_conf.rd_opt('filter_fix', 'filter_high_right_power_request')
-            self.filter_cur_left_power_request = self.f_conf.rd_opt('filter_fix', 'filter_cur_left_power_request')
-            self.filter_golden_pct = self.f_conf.rd_opt('filter_fix', 'filter_golden_pct')
-            self.filter_golden_pct_request = float(self.f_conf.rd_opt('filter_fix', 'filter_golden_pct_request'))
-            """
             self.daily_cq_t_00 = self.h_conf.rd_opt('db', 'daily_table_cq_00')
             self.daily_cq_t_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
             self.daily_cq_t_60 = self.h_conf.rd_opt('db', 'daily_table_cq_60')
@@ -156,12 +130,14 @@ class back_trader:
 
         end_factor_df = self.ts.acquire_factor(date=self.f_end_date)
 
-        while end_factor_df.empty:
-            end_datetime += timedelta(days=1)
-            self.f_end_date = end_datetime.strftime('%Y%m%d')
+        while end_factor_df.empty or end_factor_df is None:
+            # end_datetime += timedelta(days=1)
+            # self.f_end_date = end_datetime.strftime('%Y%m%d')
+            wx.info("获取终点日期的 复权因子失败，等待10秒，再次尝试...")
+            time.sleep(10)
             end_factor_df = self.ts.acquire_factor(date=self.f_end_date)
 
-        wx.info("[get_qfq_data] Back Trader Period [{}] -- [{}]".format(self.f_begin_date, self.f_end_date))
+        wx.info("[get_qfq_data] 回测数据日期区间 [{}] -- [{}]".format(self.f_begin_date, self.f_end_date))
 
         factor_abnormal_df = pd.DataFrame()
 
@@ -173,7 +149,7 @@ class back_trader:
         ret_dd_qfq_dict = {"00": ret_dd_qfq_00_df, "30": ret_dd_qfq_30_df, "002": ret_dd_qfq_002_df,
                            "60": ret_dd_qfq_60_df, "68": ret_dd_qfq_68_df}
 
-        while cur_datetime < end_datetime:
+        while cur_datetime <= end_datetime:
             cur_factor_df = self.ts.acquire_factor(date=cur_datetime.strftime('%Y%m%d'))
             if cur_factor_df.empty or cur_factor_df is None:
                 wx.info("[get_qfq_data] {} factor Empty, End Date {}".

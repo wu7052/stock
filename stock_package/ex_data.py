@@ -108,8 +108,12 @@ class ex_web_data(object):
 
     def db_load_into_ind_xxx(self, ind_type='ma', ind_df=None, stock_type=None, data_src='cq'):
         wx = lg.get_handle()
-        if ind_df is None or stock_type is None:
-            wx.info("[db_load_into_ind_xxx] Err: {} Data Frame or Stock Type is Empty,".format(ind_type))
+        if stock_type is None:
+            wx.info("[db_load_into_ind_xxx] Err: {} Stock Type is Empty,".format(ind_type))
+            return -1
+
+        if ind_df is None or ind_df.empty:
+            wx.info("[db_load_into_ind_xxx] Err: {} {} Data Frame is None or Empty".format(ind_type, stock_type))
             return -1
         ind_arry = ind_df.values.tolist()
         i = 0
@@ -148,7 +152,7 @@ class ex_web_data(object):
         i_scale = 1000
         for i in range(0, len(ind_arry), i_scale):
             tmp_arry = ind_arry[i : i+i_scale]
-            wx.info("[db_load_into_ind_xxx][%s] Loaded %d ~ %d , total %d " .format(t_name, i, i + i_scale, len(ind_arry)))
+            wx.info("[db_load_into_ind_xxx][{}] Loaded {} ~ {} , total {} " .format(t_name, i, i + i_scale, len(ind_arry)))
             self.db.cursor.executemany(sql, tmp_arry)
             self.db.handle.commit()
 
