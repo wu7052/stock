@@ -110,8 +110,8 @@ update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
 #  f_date='' 默认时间是最近交易日，或指定回测日期
 #  f_name='' 指定过滤规则文件名
 """
-# wx.info("============================[filter_A 选股]==========================================")
-# filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf')
+wx.info("============================[filter_A 选股]==========================================")
+filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf')
 
 """
 # 根据规则回测 过滤规则的准确性

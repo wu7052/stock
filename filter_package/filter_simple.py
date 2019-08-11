@@ -56,7 +56,7 @@ class filter_fix:
                 sql = "SELECT date from " + self.daily_cq_t_00 + " order by date desc limit 1"
                 df_date = self.db._exec_sql(sql=sql)
                 self.f_end_date = df_date.iloc[0, 0]
-                self.f_start_date = (date.today() + timedelta(days=-180)).strftime('%Y%m%d')
+                self.f_start_date = '20190101' #(date.today() + timedelta(days=-240)).strftime('%Y%m%d')
             elif data_src == 'bt_qfq':
                 self.f_end_date = f_end_date
                 self.f_start_date = f_start_date

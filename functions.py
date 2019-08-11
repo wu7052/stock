@@ -23,18 +23,17 @@ def wx_timer(func):
     return wrapper  # 这个语句 不属于 wrapper(), 而是 wx_timer 的返回值. 对应 func 后面这个()调用
 
 
-"""
 # 计时器 装饰器
-def wx_timer(func):
-    def wrapper():
+def wx_timer_ret(func):
+    def wrapper(*args, **kwargs):
         wx = lg.get_handle()
         start_time = time.time()
-        func()
+        ret = func(*args, **kwargs)
         time_used = time.time() - start_time
-         # print("{} used {} seconds".format(func.__name__, time_used))
-        wx.info("{} used {} seconds".format(func.__name__, time_used))
-    return wrapper
-"""
+        # print("{} used {} seconds".format(func.__name__, time_used))
+        wx.info("{} used {:.2f} seconds".format(func.__name__, time_used))
+        return ret
+    return wrapper  # 这个语句 不属于 wrapper(), 而是 wx_timer 的返回值. 对应 func 后面这个()调用
 
 
 @wx_timer

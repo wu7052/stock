@@ -45,6 +45,8 @@ class back_trader:
 
             self.ts = ts_data()
             self.web_data = ex_web_data()
+
+            self._set_bt_period()
             # wx.info("[OBJ] back_trader : __init__ called")
 
         except Exception as e:
@@ -99,7 +101,11 @@ class back_trader:
         # qfq_df.sort_values('id', ascending=True, inplace=True)
         # ret_dd_qfq_dict[key].reset_index(drop=True, inplace=True)
 
-    def get_qfq_data(self):
+    """
+    #  从数据库获得除权数据记录，并设置对象变量
+    #  利用除权数据的日期校正 回测的起止时间
+    """
+    def _set_bt_period(self):
         wx = lg.get_handle()
         tname_dict = {'00': self.daily_cq_t_00, '30': self.daily_cq_t_30, '002': self.daily_cq_t_002,
                       '60': self.daily_cq_t_60, '68': self.daily_cq_t_68}
@@ -108,21 +114,25 @@ class back_trader:
         dd_qfq_60_df = pd.DataFrame()
         dd_qfq_002_df = pd.DataFrame()
         dd_qfq_68_df = pd.DataFrame()
-        dd_qfq_dict = {"00": dd_qfq_00_df, "30": dd_qfq_30_df, "002": dd_qfq_002_df,
+        self.dd_qfq_dict = {"00": dd_qfq_00_df, "30": dd_qfq_30_df, "002": dd_qfq_002_df,
                        "60": dd_qfq_60_df, "68": dd_qfq_68_df}
         for key in tname_dict.keys():
             sql = "select id, date, open, high, low, close, pre_close, chg, pct_chg, vol, amount from " \
                   + tname_dict[key] + " where date between " + self.f_begin_date + " and " + self.f_end_date
-            dd_qfq_dict[key] = self.db._exec_sql(sql=sql)
-            if dd_qfq_dict[key] is None:
+            self.dd_qfq_dict[key] = self.db._exec_sql(sql=sql)
+            if self.dd_qfq_dict[key] is None:
                 wx.info("[back_trader] 获得 {} 板块除权数据 0 条".format(key))
             else:
-                wx.info("[back_trader] 获得 {} 板块除权数据 {} 条".format(key, len(dd_qfq_dict[key])))
+                wx.info("[back_trader] 获得 {} 板块除权数据 {} 条".format(key, len(self.dd_qfq_dict[key])))
 
         # 从除权数据记录 更新回测的 起、止时间点
-        df_date = dd_qfq_dict['00'].sort_values('date', ascending=False)
+        df_date = self.dd_qfq_dict['00'].sort_values('date', ascending=False)
         self.f_end_date = df_date.head(1).reset_index(drop=True).loc[0]['date']
         self.f_begin_date = df_date.tail(1).reset_index(drop=True).loc[0]['date']
+        wx.info("[get_qfq_data] 回测数据日期区间 [{}] -- [{}]".format(self.f_begin_date, self.f_end_date))
+
+    def get_qfq_data(self):
+        wx = lg.get_handle()
 
         # 从tushare 获得复权因子
         end_datetime = datetime.strptime(self.f_end_date, '%Y%m%d')
@@ -137,8 +147,6 @@ class back_trader:
             time.sleep(10)
             end_factor_df = self.ts.acquire_factor(date=self.f_end_date)
 
-        wx.info("[get_qfq_data] 回测数据日期区间 [{}] -- [{}]".format(self.f_begin_date, self.f_end_date))
-
         factor_abnormal_df = pd.DataFrame()
 
         ret_dd_qfq_00_df = pd.DataFrame()
@@ -150,6 +158,8 @@ class back_trader:
                            "60": ret_dd_qfq_60_df, "68": ret_dd_qfq_68_df}
 
         while cur_datetime <= end_datetime:
+            wx.info("[back trader]======================= get_qfq_data 开始处理{}的数据 ======================= "
+                    .format(cur_datetime.strftime('%Y%m%d')))
             cur_factor_df = self.ts.acquire_factor(date=cur_datetime.strftime('%Y%m%d'))
             if cur_factor_df.empty or cur_factor_df is None:
                 wx.info("[get_qfq_data] {} factor Empty, End Date {}".
@@ -177,17 +187,17 @@ class back_trader:
                 factor_tmp['id'] = factor_tmp['id'].apply(lambda x: x[0:6])
                 cur_date_str = cur_datetime.strftime('%Y%m%d')
 
-                for key in dd_qfq_dict.keys():
-                    if dd_qfq_dict[key] is None:
+                for key in self.dd_qfq_dict.keys():
+                    if self.dd_qfq_dict[key] is None:
                         wx.info("[back trader] get_qfq_data 处理 {} 板块 -- 数据 0 条 --- 跳过".format(key))
                         continue
-                    cur_qfq_df = dd_qfq_dict[key][(dd_qfq_dict[key]['date'].isin([cur_date_str]))]
+                    cur_qfq_df = self.dd_qfq_dict[key][(self.dd_qfq_dict[key]['date'].isin([cur_date_str]))]
                     if cur_qfq_df.empty:
                         wx.info("[back trader] get_qfq_data 处理 {} 板块 -- 数据 0 条 --- 日期{}--- 跳过".
                                 format(key, cur_date_str))
                         continue
 
-                    # dd_qfq_dict[key] = pd.merge(dd_qfq_dict[key], factor_tmp, on=['id', 'date'], how='left')
+                    # self.dd_qfq_dict[key] = pd.merge(self.dd_qfq_dict[key], factor_tmp, on=['id', 'date'], how='left')
                     cur_qfq_df = pd.merge(cur_qfq_df, factor_tmp, on=['id', 'date'], how='left')
                     cur_qfq_df['open'] *= cur_qfq_df['d_factor']
                     cur_qfq_df['high'] *= cur_qfq_df['d_factor']
@@ -199,7 +209,7 @@ class back_trader:
                             format(key, cur_qfq_df.shape[0], cur_date_str))
 
                     """
-                    dd_qfq_group_id = dd_qfq_dict[key].groupby(['id'])
+                    dd_qfq_group_id = self.dd_qfq_dict[key].groupby(['id'])
                     for count, df_each_stock in enumerate(dd_qfq_group_id):
                         df_each_stock[1].sort_values(by='date', ascending=True, inplace=True)
                         if df_each_stock[1].head(1)['date'].values[0] == cur_date_str:
@@ -211,8 +221,7 @@ class back_trader:
                     """
 
                 cur_datetime += timedelta(days=1)
-                wx.info("[back trader]======================= get_qfq_data 开始处理{}的数据 ======================= "
-                        .format(cur_datetime.strftime('%Y%m%d')))
+
 
         for key in ret_dd_qfq_dict.keys():
             if ret_dd_qfq_dict[key] is None or ret_dd_qfq_dict[key].empty:
@@ -221,6 +230,7 @@ class back_trader:
                 ret_dd_qfq_dict[key].sort_values('id', ascending=True, inplace=True)
                 ret_dd_qfq_dict[key].reset_index(drop=True, inplace=True)
                 ret_dd_qfq_dict[key].drop(['cur_factor', 'end_date', 'end_factor', 'd_factor'], axis=1, inplace=True)
+                ret_dd_qfq_dict[key].fillna(0, inplace=True)
                 wx.info("[back trader][db_load_into_daily_data]=================={}=================".format(key))
                 self.web_data.db_load_into_daily_data(dd_df=ret_dd_qfq_dict[key], pre_id=key, mode='basic',
                                                       type='bt_qfq')

@@ -9,7 +9,7 @@ class conf_handler():
     def __init__(self, conf=None):
         wx = lg.get_handle()
         conf = os.path.dirname(os.path.abspath(sys.argv[0]))+"\\" + conf
-        wx.info("[OBJ] Conf_handler : __init__ Read Conf : {}".format(conf))
+        # wx.info("[OBJ] Conf_handler : __init__ Read Conf : {}".format(conf))
         self.rd = configparser.ConfigParser()
         self.rd.read(conf)
         ##读取配置文件
