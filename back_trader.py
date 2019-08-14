@@ -23,5 +23,7 @@ wx.info("============================[update_ind_ma_df]重建回测数据指标=
 update_ind_ma_df(fresh=True, data_src='bt_qfq', bt_start_date=bt.f_begin_date, bt_end_date=bt.f_end_date)
 
 wx.info("============================[filter_A] 使用动态前复权数据选股 ==========================================")
-filter_A(data_src='bt_qfq', f_name='filter_rules\\filter_001.conf', f_start_date=bt.f_begin_date, f_end_date=bt.f_end_date)
+filter_ret_df = filter_A(data_src='bt_qfq', f_name='filter_rules\\filter_001.conf', f_start_date=bt.f_begin_date, f_end_date=bt.f_end_date)
+
+wx.info("============================[bt.target_profit_pct]选股收益 ============================================")
 

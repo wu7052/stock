@@ -26,10 +26,10 @@ from functions import *
 # update_sh_basic_info_2()
 
 # filter_A(data_src='cq')
-filter_A(data_src='qfq')
+filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf')
 # update_daily_data_from_ts(period = -1)
 # wx.info("============================[update_last_day_qfq_data_from_ts]更新个股前复权数据==========================================")
-# qfq_id_arr = update_last_day_qfq_data_from_ts(start= -1)
+# qfq_id_arr = update_last_day_qfq_data_from_ts(start= 0)
 
 # update_daily_data_from_eastmoney(supplement=False)
 # update_daily_data_from_eastmoney(date= '20190712',supplement=False)

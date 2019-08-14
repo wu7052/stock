@@ -366,6 +366,7 @@ def update_daily_data_from_ts(period=-1, type='cq'):
 
 # @wx_timer  用计时器 无法return 数据出来
 # start = 0 表示从今天开始， -1 表示从昨天开始（补数据）
+@wx_timer_ret
 def update_last_day_qfq_data_from_ts(start=0):
     wx = lg.get_handle()
     ts = ts_data()
@@ -1098,7 +1099,7 @@ def report_cross_dgj_ws(rp=None, ws_days=180, dgj_days=180):
         return -1
 
 
-@wx_timer
+@wx_timer_ret
 def filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf', f_start_date='', f_end_date=''):
     wx = lg.get_handle()
     filter_a = filter_fix(f_conf=f_name, f_start_date=f_start_date, f_end_date=f_end_date, data_src=data_src)
@@ -1178,7 +1179,7 @@ def filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf', f_start_dat
     reporter.output_table(dd_df=df_filter_result, sheet_name='最终清单',
                           filename='选股清单_' + data_src, type='.xlsx', index=False)
     wx.info("[Filter_A Completed] 选股完成，合计： {} ".format(len(df_filter_result)))
-
+    return df_filter_result
 
 """
 # Logger 测试代码

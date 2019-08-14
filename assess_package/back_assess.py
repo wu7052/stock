@@ -249,3 +249,7 @@ class back_trader:
                 self.web_data.db_load_into_daily_data(dd_df=qfq_abnormal_df_tmp, pre_id=regx_prefix[key], mode='basic',
                                                     type='bt_qfq')
             wx.info("[back trader][异常数据处理完毕], 全部前复权数据处理完毕 ")
+
+
+    def target_profit_pct(self):
+        wx = lg.get_handle()

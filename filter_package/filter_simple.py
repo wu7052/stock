@@ -376,8 +376,8 @@ class filter_fix:
         #     return
 
         if self.data_src == 'qfq':
-            tname_arr = [self.daily_qfq_t_68, self.daily_qfq_t_00, self.daily_qfq_t_30, self.daily_qfq_t_60,
-                         self.daily_qfq_t_002 ]
+            tname_arr = [self.daily_qfq_t_002, self.daily_qfq_t_68, self.daily_qfq_t_00,
+                         self.daily_qfq_t_30, self.daily_qfq_t_60]
         elif self.data_src == 'bt_qfq':
             tname_arr = [self.bt_daily_qfq_t_00, self.bt_daily_qfq_t_30, self.bt_daily_qfq_t_60,
                          self.bt_daily_qfq_t_002, self.bt_daily_qfq_t_68]
@@ -416,11 +416,11 @@ class filter_fix:
                 if ret_LR == 1:
                     wx.info("[Filter LR] {} / {} Filter {} LR ... [LR FOUND!!!] ".format(count + 1, len(df_groupby_id),
                                                                                           df_each_stock[0]))
-                elif ret_LR == 0:
+                elif ret_LR == 0:  # 左侧涨幅不达标
                     wx.info("[Filter LR] {} / {} Filter {} Left Raise Low... [LR PASS] ".format(count + 1,  len(df_groupby_id),
                                                                                                  df_each_stock[0]))
                     continue
-                elif ret_LR == -1:
+                elif ret_LR == -1: # 右侧创新低
                     wx.info("[Filter LR] {} / {} Filter {} Right New Lowest ... [LR PASS] ".format(count + 1, len(df_groupby_id),
                                                                                       df_each_stock[0]))
                     continue
