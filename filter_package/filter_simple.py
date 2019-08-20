@@ -128,12 +128,16 @@ class filter_fix:
         df_high_price_grp = pd.DataFrame()
         for t_name in tname_arr:
             sql = "SELECT id, high from " + t_name + " where date =  " + self.f_end_date + " and high < " + self.high_price
-            if (df_high_price_grp.empty):
+            if df_high_price_grp is None or  df_high_price_grp.empty:
                 df_high_price_grp = self.db._exec_sql(sql=sql)
             else:
                 df_high_price_grp = df_high_price_grp.append(self.db._exec_sql(sql=sql))
-        df_high_price_grp.reset_index(drop=True, inplace=True)
-        return df_high_price_grp
+
+        if df_high_price_grp is None or df_high_price_grp.empty:
+            return None
+        else:
+            df_high_price_grp.reset_index(drop=True, inplace=True)
+            return df_high_price_grp
 
     """
     函数说明：最近收盘价 及 MA5 都低于 MA55  的股票列表

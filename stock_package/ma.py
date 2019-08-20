@@ -95,11 +95,11 @@ class ma_kits(object):
 
         # today = datetime.now().strftime('%Y%m%d')
         if data_src == 'bt_qfq':
-            sql = "select id, date, close from " + t_name + " where date between  " \
+            sql = "select id, date, close from " + t_name + " where close > 0 and  date between  " \
                   + bt_start_date + " and "+bt_end_date+" order by id"
         else:
-            start_date = (datetime.now() + timedelta(days=-240)).strftime('%Y%m%d')  # 起始日期 为记录日期+1天
-            sql = "select id, date, close from " + t_name + " where date >=  " + start_date + " order by id"
+            start_date = (datetime.now() + timedelta(days=-480)).strftime('%Y%m%d')  # 起始日期 为记录日期+1天
+            sql = "select id, date, close from " + t_name + " where close > 0 and date >=  " + start_date + " order by id"
 
         df_ma = self.db._exec_sql(sql)
         # df_ma.sort_values(by='date', ascending=True, inplace=True)
@@ -107,6 +107,10 @@ class ma_kits(object):
         # df_grouped = df_ma['close'].groupby(df_ma['id'])
         if df_ma is None or df_ma.empty:
             return None
+        # else:
+        #     删除 未交易日（停牌）的数据
+        #     df_ma = df_ma[~df_ma['close'].isin([0])]
+
         df_tmp = pd.DataFrame()
         for duration in self.ma_duration:
             df_tmp['MA_' + duration] = df_ma['close'].groupby(df_ma['id']).rolling(int(duration)).mean()
@@ -121,6 +125,7 @@ class ma_kits(object):
             # df_tmp['EMA_' + duration] = df_grouped['close'].ewm(span=int(duration)).mean()
             df_tmp['EMA_' + duration] = df_ma['close'].groupby(df_ma['id']).apply(lambda x:x.ewm(span=int(duration)).mean())
         # 整理 指数移动均值数据，合并DataFrame
+        df_tmp.reset_index(drop=True, inplace=True)
         df_ma = pd.merge(df_ma, df_tmp, left_index=True, right_index=True, how='inner')
 
         # MACD 快线

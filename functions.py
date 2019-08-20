@@ -470,7 +470,7 @@ def update_daily_data_from_eastmoney_2(date=None, supplement=False):
 
 
 """
-# 从东财老接口获得 60/30/00/002 的日交易数据
+# 从东财老接口获得 68/60/30/00/002 的日交易数据
 """
 
 
@@ -481,10 +481,6 @@ def update_daily_data_from_eastmoney(date=None, supplement=False):
     page_src = (('C.23', '68%', '科创板'), ('C.13', '002%', '中小板'),
                 ('C.2', '60%', '上证 主板'), ('C._SZAME', '00%', '深证 主板'),
                 ('C.80', '30%', '创业板'))
-    # page_src = (('C.13', '002%', '中小板'),
-    #             ('C.2', '60%', '上证 主板'), ('C._SZAME', '00%', '深证 主板'),
-    #             ('C.80', '30%', '创业板'))
-
     try:
         for src in page_src:
             page_count = 1
@@ -764,6 +760,7 @@ def update_ind_ma_df(fresh=False, data_src='cq', bt_start_date='', bt_end_date='
         if ma_ret is None or ma_ret.empty:
             wx.info("[update_ind_ma_df]=========== {} {} MA =========== Data Empty ".format(pre, data_src))
         else:
+            wx.info("[update_ind_ma_df]=========== {} {} MA =========== Loading Data".format(pre, data_src))
             web_data.db_load_into_ind_xxx(ind_type='ma', ind_df=ma_ret, stock_type=pre, data_src=data_src)
             wx.info("[update_ind_ma_df]=========== {} {} MA =========== Data Loaded ALL ".format(pre, data_src))
         # else:

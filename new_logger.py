@@ -33,7 +33,7 @@ def _init_():
             },
             'simple': {
                 'format': simple_format
-            },
+            }
         },
         'filters': {},
         'handlers': {
@@ -50,14 +50,14 @@ def _init_():
                 'backupCount': 5,
                 'formatter': 'standard',
                 'encoding': 'utf-8',  # 日志文件的编码，再也不用担心中文log乱码了
-            },
+            }
         },
         'loggers': {
             '': {
                 'handlers': ['default', 'console'],  # 这里把上面定义的两个handler都加上，即log数据既写入文件又打印到屏幕
                 'level': 'INFO',
                 'propagate': True,  # 向上（更高level的logger）传递
-            },
+            }
         },
     }
     logging.config.dictConfig(LOGGING_DIC)  # 导入上面定义的配置

@@ -47,7 +47,6 @@ class back_trader:
             self.web_data = ex_web_data()
 
             self._set_bt_period()
-            # wx.info("[OBJ] back_trader : __init__ called")
 
         except Exception as e:
             raise e
@@ -121,15 +120,15 @@ class back_trader:
                   + tname_dict[key] + " where date between " + self.f_begin_date + " and " + self.f_end_date
             self.dd_qfq_dict[key] = self.db._exec_sql(sql=sql)
             if self.dd_qfq_dict[key] is None:
-                wx.info("[back_trader] 获得 {} 板块除权数据 0 条".format(key))
+                wx.info("[back_trader][_set_bt_period] 获得 {} 板块除权数据 0 条".format(key))
             else:
-                wx.info("[back_trader] 获得 {} 板块除权数据 {} 条".format(key, len(self.dd_qfq_dict[key])))
+                wx.info("[back_trader][_set_bt_period] 获得 {} 板块除权数据 {} 条".format(key, len(self.dd_qfq_dict[key])))
 
         # 从除权数据记录 更新回测的 起、止时间点
         df_date = self.dd_qfq_dict['00'].sort_values('date', ascending=False)
         self.f_end_date = df_date.head(1).reset_index(drop=True).loc[0]['date']
         self.f_begin_date = df_date.tail(1).reset_index(drop=True).loc[0]['date']
-        wx.info("[get_qfq_data] 回测数据日期区间 [{}] -- [{}]".format(self.f_begin_date, self.f_end_date))
+        wx.info("[back_trader][_set_bt_period] 回测数据日期区间 [{}] -- [{}]".format(self.f_begin_date, self.f_end_date))
 
     def get_qfq_data(self):
         wx = lg.get_handle()
@@ -251,5 +250,35 @@ class back_trader:
             wx.info("[back trader][异常数据处理完毕], 全部前复权数据处理完毕 ")
 
 
-    def target_profit_pct(self):
+    def target_profit_pct(self, target_df = None):
         wx = lg.get_handle()
+        if target_df is None or target_df.empty:
+            wx.info("[back trader][taget_profilt_pct] Target DataFrame is None or Empty, Exit ...")
+            return None
+
+        begin_date_str = self.f_end_date
+        end_date = datetime.strptime(self.f_end_date, "%Y%m%d")
+        end_date_str = (end_date + timedelta(days=30)).strftime('%Y%m%d')
+
+        target_df[['股票代码']] = target_df[['股票代码']].astype(str)
+        id_array = target_df['股票代码'].values
+        for id in id_array:
+
+            if len(id) < 6:
+                id = id.zfill(6)+'.SZ'
+            elif len(id) == 6 and re.match('^6', id):
+                id += '.SH'
+            elif len(id) == 6 :
+                id += '.SZ'
+            elif len(id) > 6:
+                pass
+            target_profit_df = self.ts.acquire_qfq_period(id=id, start_date=begin_date_str, end_date=end_date_str)
+            # if qfq_tmp is None or qfq_tmp.empty:
+            #     wx.info("[back_trader][target_profit_pct] Failed to acquire {} qfq Data {} - {} ".
+            #             format(id, begin_date_str, end_date_str))
+            # else:
+            #     qfq_df = qfq_df.append(qfq_tmp)
+            #     wx.info("[back_trader][_process_abnormal_qfq_data] Acquired {} qfq Data {} - {} ".
+            #             format(id, self.f_begin_date, self.f_end_date))
+        # return qfq_df
+
