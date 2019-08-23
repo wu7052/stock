@@ -6,3 +6,4 @@ pack_path = workpath + '\\filter_package'
 sys.path.insert(0, pack_path)
 
 from filter_simple import filter_fix
+from filter_curve import filter_curve

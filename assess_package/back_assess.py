@@ -1,14 +1,16 @@
 from db_package import db_ops
 from conf import conf_handler
 import new_logger as lg
-from datetime import datetime, time, date, timedelta
+from datetime import datetime, date, timedelta
+import time
 import pandas as pd
 from filter_package import filter_fix
 from stock_package import ts_data, ex_web_data, ma_kits, psy_kits
 import re
+from painter_package import mp_painter
 
 class back_trader:
-    def __init__(self, f_date='', f_days=-240, f_name=''):
+    def __init__(self, f_date='', f_days=-240):
         wx = lg.get_handle()
         try:
             if f_days >= 0 and f_date != '':
@@ -37,6 +39,12 @@ class back_trader:
             self.bt_daily_qfq_t_68 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_68')
             self.bt_daily_qfq_t_002 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_002')
 
+            self.ma_bt_qfq_table_60 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_60')
+            self.ma_bt_qfq_table_30 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_30')
+            self.ma_bt_qfq_table_00 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_00')
+            self.ma_bt_qfq_table_002 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_002')
+            self.ma_bt_qfq_table_68 = self.h_conf.rd_opt('db', 'ma_bt_qfq_table_68')
+
             host = self.h_conf.rd_opt('db', 'host')
             database = self.h_conf.rd_opt('db', 'database')
             user = self.h_conf.rd_opt('db', 'user')
@@ -55,10 +63,16 @@ class back_trader:
         wx = lg.get_handle()
         bt_tname_dict = {'00': self.bt_daily_qfq_t_00, '30': self.bt_daily_qfq_t_30, '002': self.bt_daily_qfq_t_002,
                          '60': self.bt_daily_qfq_t_60, '68': self.bt_daily_qfq_t_68}
+        bt_ma_tname_dict = {'00': self.ma_bt_qfq_table_00, '30': self.ma_bt_qfq_table_30, '002': self.ma_bt_qfq_table_002,
+                         '60': self.ma_bt_qfq_table_60, '68': self.ma_bt_qfq_table_68}
         for key in bt_tname_dict.keys():
             sql = "delete from " + bt_tname_dict[key]
             self.db._exec_sql(sql=sql)
             wx.info("[back_trader] {} is cleared".format(bt_tname_dict[key]))
+        for key in bt_ma_tname_dict.keys():
+            sql = "delete from " + bt_ma_tname_dict[key]
+            self.db._exec_sql(sql=sql)
+            wx.info("[back_trader] {} is cleared".format(bt_ma_tname_dict[key]))
         wx.info("[back_trader] =========== back trader tables are completed cleared=============")
 
     """
@@ -262,6 +276,9 @@ class back_trader:
 
         target_df[['股票代码']] = target_df[['股票代码']].astype(str)
         id_array = target_df['股票代码'].values
+
+        painter = mp_painter()
+
         for id in id_array:
 
             if len(id) < 6:
@@ -273,6 +290,17 @@ class back_trader:
             elif len(id) > 6:
                 pass
             target_profit_df = self.ts.acquire_qfq_period(id=id, start_date=begin_date_str, end_date=end_date_str)
+            while target_profit_df is None or target_profit_df.empty:
+                wx.info("[back_trader][target_profit_pct] 从Tushare获取{} ：{}-{}的前复权数据失败，10秒后重试".
+                        format(id, begin_date_str, end_date_str))
+                time.sleep(10)
+                target_profit_df = self.ts.acquire_qfq_period(id=id, start_date=begin_date_str, end_date=end_date_str)
+
+            candle_df = target_profit_df[['trade_date','open','high','low','close']].copy()#.apply(pd.to_numeric, errors='ignore')
+            # 按日期升序
+            candle_df.sort_values(by='trade_date', ascending=True, inplace=True)
+            wx.info("[back_trader][target_profit_pct] {} K线图绘制".format(id))
+            painter.candle_draw(id=id, df = candle_df)
             # if qfq_tmp is None or qfq_tmp.empty:
             #     wx.info("[back_trader][target_profit_pct] Failed to acquire {} qfq Data {} - {} ".
             #             format(id, begin_date_str, end_date_str))

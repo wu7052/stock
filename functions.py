@@ -6,7 +6,7 @@ import time
 import new_logger as lg
 import re
 from conf import conf_handler
-from filter_package import filter_fix
+from filter_package import filter_fix, filter_curve
 from report_package import ws_rp
 
 
@@ -1097,27 +1097,29 @@ def report_cross_dgj_ws(rp=None, ws_days=180, dgj_days=180):
 
 
 @wx_timer_ret
-def filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf', f_start_date='', f_end_date=''):
+def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
     wx = lg.get_handle()
-    filter_a = filter_fix(f_conf=f_name, f_start_date=f_start_date, f_end_date=f_end_date, data_src=data_src)
+    filter_a = filter_fix(f_conf='filter_rules\\filter_001.conf', f_start_date=f_start_date, f_end_date=f_end_date, data_src=data_src)
+    filter_b = filter_curve(f_conf='filter_rules\\filter_002.conf', f_start_date=f_start_date, f_end_date=f_end_date, data_src=data_src)
+
     target_dict = {}
 
     # 除权表
     df_pe_grp = filter_a.filter_pe()
     if df_pe_grp is None or df_pe_grp.empty:
-        wx.info("[Filter PE] founded 0")
+        wx.info("[Filter_Fix][Filter PE] founded 0")
         df_pe_grp = pd.DataFrame()
     else:
-        wx.info("[Filter PE] {} founded ".format(len(df_pe_grp)))
+        wx.info("[Filter_Fix][Filter PE] {} founded ".format(len(df_pe_grp)))
     target_dict['PE Group'] = df_pe_grp
 
     # 前复权表
     df_amount_grp = filter_a.filter_tt_amount()
     if df_amount_grp is None or df_amount_grp.empty:
-        wx.info("[Filter Total Amount] founded 0")
+        wx.info("[Filter_Fix][Filter Total Amount] founded 0")
         df_amount_grp = pd.DataFrame()
     else:
-        wx.info("[Filter Total Amount] {} founded".format(len(df_amount_grp)))
+        wx.info("[Filter_Fix][Filter Total Amount] {} founded".format(len(df_amount_grp)))
     target_dict['Amount Group'] = df_amount_grp
 
     # df_target = pd.merge(df_pe_grp, df_amount_grp)
@@ -1125,10 +1127,10 @@ def filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf', f_start_dat
     # 前复权表
     df_below_ma55_grp = filter_a.filter_below_ma55()
     if df_below_ma55_grp is None or df_below_ma55_grp.empty:
-        wx.info("[Filter Below Ma 55] founded 0")
+        wx.info("[Filter_Fix][Filter Below Ma 55] founded 0")
         df_below_ma55_grp = pd.DataFrame()
     else:
-        wx.info("[Filter Below Ma 55] {} founded".format(len(df_below_ma55_grp)))
+        wx.info("[Filter_Fix][Filter Below Ma 55] {} founded".format(len(df_below_ma55_grp)))
     target_dict['Ma55 Group'] = df_below_ma55_grp
 
     # df_target = pd.merge(df_target, df_below_ma55_grp)
@@ -1136,46 +1138,44 @@ def filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf', f_start_dat
     # 前复权表
     df_high_price_grp = filter_a.filter_high_price()
     if df_high_price_grp is None or df_high_price_grp.empty:
-        wx.info("[Filter High Price] founded 0")
+        wx.info("[Filter_Fix][Filter High Price] founded 0")
         df_high_price_grp = pd.DataFrame()
     else:
-        wx.info("[Filter High Price] {} founded".format(len(df_high_price_grp)))
+        wx.info("[Filter_Fix][Filter High Price] {} founded".format(len(df_high_price_grp)))
     target_dict['High Price Group'] = df_high_price_grp
 
     df_target = pd.DataFrame()
     for key in target_dict.keys():
         if target_dict[key].empty:
-            choose = input("[filter_A] "+key+" 结果为空，请选择是否继续 Y/N : ")
+            choose = input("[Filter_Fix] "+key+" 结果为空，请选择是否继续 Y/N : ")
             if choose.strip() == 'N' or choose.strip() == 'n':
-                wx.info("[filter_A] 筛选结果为空，因为 {} 为空".format(key))
+                wx.info("[Filter_Fix] 筛选结果为空，因为 {} 为空".format(key))
                 return None
             else:
-                wx.info("[filter_A] {} 筛选结果为空，跳过此条件继续筛选")
+                wx.info("[Filter_Fix] {} 筛选结果为空，跳过此条件继续筛选")
                 continue
         elif len(df_target) == 0:
             df_target = target_dict[key]
         else:
             df_target = pd.merge(df_target, target_dict[key])
 
-
-    # df_target = pd.merge(df_target, df_high_price_grp)
     df_target.rename(columns={'id': '股票代码', 'tt_amount': '流通市值', 'close': '最近交易日收盘价',
                               'ma_5': '5日均值', 'ma_55': '55日均值', 'high': '最近交易日最高价'}, inplace=True)
-    wx.info("[Filter_A] [PE + Amount + Ma55 + HighPrice] {} founded".format(len(df_target)))
+    wx.info("[Filter_Fix] [PE + Amount + Ma55 + HighPrice] {} founded".format(len(df_target)))
 
     reporter = ws_rp()
     # reporter.output_table(dd_df=df_target.round(2), sheet_name='PE_MA55_股本_股价筛选结果',
     #                       filename='选股清单_1_' + data_src, type='.xlsx', index=False)
 
     # 前复权表
-    df_filter_side = filter_a.filter_side()
+    df_filter_side = filter_b.filter_side()
     reporter.output_table(dd_df=df_filter_side, sheet_name='涨幅筛选结果',
                           filename='选股清单_2_' + data_src, type='.xlsx', index=False)
 
     df_filter_result = pd.merge(df_filter_side, df_target.round(2))
     reporter.output_table(dd_df=df_filter_result, sheet_name='最终清单',
                           filename='选股清单_' + data_src, type='.xlsx', index=False)
-    wx.info("[Filter_A Completed] 选股完成，合计： {} ".format(len(df_filter_result)))
+    wx.info("[Filter_Curve Completed] 选股完成，合计： {} ".format(len(df_filter_result)))
     return df_filter_result
 
 """

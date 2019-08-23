@@ -25,8 +25,9 @@ from functions import *
 # update_sh_basic_info_kc()
 # update_sh_basic_info_2()
 
-# filter_A(data_src='cq')
-# filter_A(data_src='qfq', f_name='filter_rules\\filter_001.conf')
+wx.info("============================[filter_A 选股]==========================================")
+filter_A(data_src='qfq')
+
 # update_daily_data_from_ts(period = -1)
 # wx.info("============================[update_last_day_qfq_data_from_ts]更新个股前复权数据==========================================")
 # qfq_id_arr = update_last_day_qfq_data_from_ts(start= 0)
@@ -46,9 +47,12 @@ from functions import *
 # update_daily_data_from_ts(period = -10)
 # update_daily_data_from_eastmoney(supplement=False)
 #
-wx.info("============================[update_ind_ma_df]除权数据指标（增量更新）==========================================")
-update_ind_ma_df(fresh=True, data_src='cq')
-wx.info("============================[update_ind_ma_df]前复权数据指标（增量更新）==========================================")
-update_ind_ma_df(fresh=True, data_src='qfq')
+# wx.info("============================[update_ind_ma_df]除权数据指标（增量更新）==========================================")
+# update_ind_ma_df(fresh=True, data_src='cq')
+# wx.info("============================[update_ind_ma_df]前复权数据指标（增量更新）==========================================")
+# update_ind_ma_df(fresh=True, data_src='qfq')
 # wx.info("============================[update_ind_ma_single]当日个股前复权数据指标（个股全部更新）==========================================")
 # update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
+# 常用功能，从 eastmoney 获得全部的 日交易数据，同时更新  'cq' \ 'qfq' 两类表
+# wx.info("============================[update_daily_data_from_eastmoney]当日交易数据==========================================")
+# update_daily_data_from_eastmoney(supplement=False)

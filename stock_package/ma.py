@@ -98,7 +98,7 @@ class ma_kits(object):
             sql = "select id, date, close from " + t_name + " where close > 0 and  date between  " \
                   + bt_start_date + " and "+bt_end_date+" order by id"
         else:
-            start_date = (datetime.now() + timedelta(days=-480)).strftime('%Y%m%d')  # 起始日期 为记录日期+1天
+            start_date = (datetime.now() + timedelta(days=-240)).strftime('%Y%m%d')  # 起始日期 为记录日期+1天
             sql = "select id, date, close from " + t_name + " where close > 0 and date >=  " + start_date + " order by id"
 
         df_ma = self.db._exec_sql(sql)
@@ -107,9 +107,6 @@ class ma_kits(object):
         # df_grouped = df_ma['close'].groupby(df_ma['id'])
         if df_ma is None or df_ma.empty:
             return None
-        # else:
-        #     删除 未交易日（停牌）的数据
-        #     df_ma = df_ma[~df_ma['close'].isin([0])]
 
         df_tmp = pd.DataFrame()
         for duration in self.ma_duration:
@@ -192,7 +189,7 @@ class ma_kits(object):
             wx.info("[Class MA_kits: calc] failed to identify the Data Src {}".format(data_src))
             return None
 
-        sql = "select id, date, close from " + t_name + " where id = " + stock_id + " order by date desc "
+        sql = "select id, date, close from " + t_name + " where close > 0 and id = " + stock_id + " order by date desc "
         df_ma = self.db._exec_sql(sql)
         df_ma.sort_values(by='date', ascending=True, inplace=True)
 
