@@ -8,7 +8,7 @@ import re
 from conf import conf_handler
 from filter_package import filter_fix, filter_curve
 from report_package import ws_rp
-
+from db_package import db_ops
 
 # 计时器 装饰器
 def wx_timer(func):
@@ -183,7 +183,8 @@ def update_sh_basic_info_kc():
                      'KD': u'有色金属冶炼和压延加工业',
                      'KE': u'计算机、通信和其他电子设备制造业',
                      'KF': u'软件和信息技术服务业',
-                     'KG': u'通用设备制造业'}
+                     'KG': u'通用设备制造业',
+                     'KH' : u'医药制造业'}
 
     try:
         # 从Web获取沪市 所有股票的基本信息
@@ -259,8 +260,18 @@ def update_sw_industry_into_basic_info():
                 code[0]) + "&symbol=&_s_r_a=setlen"
             stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
             time.sleep(1)
+
+            while stock_id_json is None:
+                wx.info("SW Industry {}:{}  Code:{} Failed to access --> [{}], retry after 3 seconds".
+                        format(code_counter, len(sw_industry_arr), code[0], sina_industry_url))
+                time.sleep(10)
+                stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
+
             if stock_id_json == 'null':
-                # wx.info("SW Industry Code{} page {} Null".format(code[0], page_counter))
+                # wx.info("SW Industry {}:{}  Code:{} Failed to access --> [{}], retry after 3 seconds".
+                #         format(code_counter, len(sw_industry_arr), code[0], sina_industry_url))
+                # time.sleep(10)
+                # stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
                 break
             else:
                 wx.info("SW Industry {}:{}  Code:{}  Page:{} loaded into basic info table".
@@ -983,6 +994,15 @@ def report_repo_completion_data(rp=None):
     else:
         return -1
 
+"""
+# 分析热点板块
+"""
+
+@wx_timer
+def analysis_hot_industry(duration = 5):
+    ana = analyzer()
+    ana.ana_hot_industry(duration = duration)
+
 
 @wx_timer
 def analysis_dgj():
@@ -1107,19 +1127,19 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
     # 除权表
     df_pe_grp = filter_a.filter_pe()
     if df_pe_grp is None or df_pe_grp.empty:
-        wx.info("[Filter_Fix][Filter PE] founded 0")
+        wx.info("[Filter_A][Filter PE] founded 0")
         df_pe_grp = pd.DataFrame()
     else:
-        wx.info("[Filter_Fix][Filter PE] {} founded ".format(len(df_pe_grp)))
+        wx.info("[Filter_A][Filter PE] {} founded ".format(len(df_pe_grp)))
     target_dict['PE Group'] = df_pe_grp
 
     # 前复权表
     df_amount_grp = filter_a.filter_tt_amount()
     if df_amount_grp is None or df_amount_grp.empty:
-        wx.info("[Filter_Fix][Filter Total Amount] founded 0")
+        wx.info("[Filter_A][Filter Total Amount] founded 0")
         df_amount_grp = pd.DataFrame()
     else:
-        wx.info("[Filter_Fix][Filter Total Amount] {} founded".format(len(df_amount_grp)))
+        wx.info("[Filter_A][Filter Total Amount] {} founded".format(len(df_amount_grp)))
     target_dict['Amount Group'] = df_amount_grp
 
     # df_target = pd.merge(df_pe_grp, df_amount_grp)
@@ -1127,10 +1147,10 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
     # 前复权表
     df_below_ma55_grp = filter_a.filter_below_ma55()
     if df_below_ma55_grp is None or df_below_ma55_grp.empty:
-        wx.info("[Filter_Fix][Filter Below Ma 55] founded 0")
+        wx.info("[Filter_A][Filter Below Ma 55] founded 0")
         df_below_ma55_grp = pd.DataFrame()
     else:
-        wx.info("[Filter_Fix][Filter Below Ma 55] {} founded".format(len(df_below_ma55_grp)))
+        wx.info("[Filter_A][Filter Below Ma 55] {} founded".format(len(df_below_ma55_grp)))
     target_dict['Ma55 Group'] = df_below_ma55_grp
 
     # df_target = pd.merge(df_target, df_below_ma55_grp)
@@ -1138,21 +1158,21 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
     # 前复权表
     df_high_price_grp = filter_a.filter_high_price()
     if df_high_price_grp is None or df_high_price_grp.empty:
-        wx.info("[Filter_Fix][Filter High Price] founded 0")
+        wx.info("[Filter_A][Filter High Price] founded 0")
         df_high_price_grp = pd.DataFrame()
     else:
-        wx.info("[Filter_Fix][Filter High Price] {} founded".format(len(df_high_price_grp)))
+        wx.info("[Filter_A][Filter High Price] {} founded".format(len(df_high_price_grp)))
     target_dict['High Price Group'] = df_high_price_grp
 
     df_target = pd.DataFrame()
     for key in target_dict.keys():
         if target_dict[key].empty:
-            choose = input("[Filter_Fix] "+key+" 结果为空，请选择是否继续 Y/N : ")
+            choose = input("[Filter_A] "+key+" 结果为空，请选择是否继续 Y/N : ")
             if choose.strip() == 'N' or choose.strip() == 'n':
-                wx.info("[Filter_Fix] 筛选结果为空，因为 {} 为空".format(key))
+                wx.info("[Filter_A] 筛选结果为空，因为 {} 为空".format(key))
                 return None
             else:
-                wx.info("[Filter_Fix] {} 筛选结果为空，跳过此条件继续筛选")
+                wx.info("[Filter_A] {} 筛选结果为空，跳过此条件继续筛选")
                 continue
         elif len(df_target) == 0:
             df_target = target_dict[key]
@@ -1161,7 +1181,7 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
 
     df_target.rename(columns={'id': '股票代码', 'tt_amount': '流通市值', 'close': '最近交易日收盘价',
                               'ma_5': '5日均值', 'ma_55': '55日均值', 'high': '最近交易日最高价'}, inplace=True)
-    wx.info("[Filter_Fix] [PE + Amount + Ma55 + HighPrice] {} founded".format(len(df_target)))
+    wx.info("[Filter_A] [PE + Amount + Ma55 + HighPrice] {} founded".format(len(df_target)))
 
     reporter = ws_rp()
     # reporter.output_table(dd_df=df_target.round(2), sheet_name='PE_MA55_股本_股价筛选结果',
@@ -1177,6 +1197,128 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
                           filename='选股清单_' + data_src, type='.xlsx', index=False)
     wx.info("[Filter_Curve Completed] 选股完成，合计： {} ".format(len(df_filter_result)))
     return df_filter_result
+
+
+
+@wx_timer_ret
+def filter_B(data_src='qfq', f_start_date='', f_end_date=''):
+    wx = lg.get_handle()
+    filter_a = filter_fix(f_conf='filter_rules\\filter_001.conf', f_start_date=f_start_date, f_end_date=f_end_date, data_src=data_src)
+    # filter_b = filter_curve(f_conf='filter_rules\\filter_002.conf', f_start_date=f_start_date, f_end_date=f_end_date, data_src=data_src)
+
+    target_dict = {}
+
+    # 均线向上、 正向排列的股票
+    # df_ma_up_grp = filter_a.filter_ma_up()
+    # if df_ma_up_grp is None or df_ma_up_grp.empty:
+    #     wx.info("[Filter_B][Filter Ma] founded 0")
+    #     df_ma_up_grp = pd.DataFrame()
+    # else:
+    #     wx.info("[Filter_B][Filter Ma] {} founded ".format(len(df_ma_up_grp)))
+    # target_dict['Ma UP Group'] = df_ma_up_grp
+
+    # 热点板块的统计
+    df_hot_industry = filter_a.filter_dd_pct_top()
+    if df_hot_industry is None or df_hot_industry.empty:
+        wx.info("[Filter_B][Filter hot industry] founded 0")
+        df_hot_industry = pd.DataFrame()
+    else:
+        wx.info("[Filter_B][Filter hot industry] {} founded ".format(len(df_hot_industry)))
+
+    # 统计有几个热点行业
+    hot_industry_counter = df_hot_industry.industry_name.nunique()
+
+    # 统计热点行业个股出现的个数
+    df_hot_industry_count = df_hot_industry.groupby(by='industry_name',as_index=False).size()#.sort_values(ascending = False, inpalce = True)
+
+
+
+    target_dict['hot industry'] = df_hot_industry
+
+
+
+    df_target = pd.DataFrame()
+    for key in target_dict.keys():
+        if target_dict[key].empty:
+            choose = input("[Filter_B] "+key+" 结果为空，请选择是否继续 Y/N : ")
+            if choose.strip() == 'N' or choose.strip() == 'n':
+                wx.info("[Filter_B] 筛选结果为空，因为 {} 为空".format(key))
+                return None
+            else:
+                wx.info("[Filter_B] {} 筛选结果为空，跳过此条件继续筛选")
+                continue
+        elif len(df_target) == 0:
+            df_target = target_dict[key]
+        else:
+            df_target = pd.merge(df_target, target_dict[key])
+
+    df_target.rename(columns={'id': '股票代码'}, inplace=True)
+    wx.info("[Filter_B] {} founded".format(len(df_target)))
+
+    reporter = ws_rp()
+    reporter.output_table(dd_df=df_target.round(2), sheet_name='均线向上筛选结果',
+                          filename='选股清单_均线向上' + data_src, type='.xlsx', index=False)
+
+    # 前复权表
+    # df_filter_side = filter_b.filter_side()
+    # reporter.output_table(dd_df=df_filter_side, sheet_name='涨幅筛选结果',
+    #                       filename='选股清单_2_' + data_src, type='.xlsx', index=False)
+    #
+    # df_filter_result = pd.merge(df_filter_side, df_target.round(2))
+    # reporter.output_table(dd_df=df_filter_result, sheet_name='最终清单',
+    #                       filename='选股清单_' + data_src, type='.xlsx', index=False)
+    wx.info("[Filter_Curve Completed] 选股完成，合计： {} ".format(len(df_target)))
+    return df_target
+
+"""
+# 更新 dd_hot_industry 表，每日涨势股票及对应板块
+"""
+@wx_timer
+def update_hot_industry(start_date='',end_date=''):
+    web_data = ex_web_data()
+    wx = lg.get_handle()
+    h_conf = conf_handler(conf='stock_analyer.conf')
+    daily_cq_t_00 = h_conf.rd_opt('db', 'daily_table_cq_00')
+    daily_cq_t_30 = h_conf.rd_opt('db', 'daily_table_cq_30')
+    daily_cq_t_60 = h_conf.rd_opt('db', 'daily_table_cq_60')
+    daily_cq_t_68 = h_conf.rd_opt('db', 'daily_table_cq_68')
+    daily_cq_t_002 = h_conf.rd_opt('db', 'daily_table_cq_002')
+    host = h_conf.rd_opt('db', 'host')
+    database = h_conf.rd_opt('db', 'database')
+    user = h_conf.rd_opt('db', 'user')
+    pwd = h_conf.rd_opt('db', 'pwd')
+    db = db_ops(host=host, db=database, user=user, pwd=pwd)
+    if end_date == '':
+        end_date = datetime.now().strftime('%Y%m%d')
+
+    tname_arr = [daily_cq_t_00, daily_cq_t_30, daily_cq_t_60,
+                 daily_cq_t_002, daily_cq_t_68]
+
+    df_pct_top_grp = pd.DataFrame()
+    for t_name in tname_arr:
+        if start_date == '':
+            sql = "SELECT dd.id , dd.date ,la.name, la.sw_level_1, sw.industry_name, dd.pct_chg FROM " + t_name + \
+                  " as dd left join list_a as la on la.id=dd.id " \
+                  " left join sw_industry_code as sw on sw.industry_code =  la.sw_level_1" \
+                  " where dd.date =  " + end_date + " and dd.pct_chg > 7"
+        else:
+            sql = "SELECT dd.id , dd.date ,la.name, la.sw_level_1, sw.industry_name, dd.pct_chg FROM " + t_name + \
+                  " as dd left join list_a as la on la.id=dd.id " \
+                  " left join sw_industry_code as sw on sw.industry_code =  la.sw_level_1" \
+                  " where dd.date between  "+start_date+" and " + end_date + " and dd.pct_chg > 7"
+
+        if df_pct_top_grp.empty:
+            df_pct_top_grp = db._exec_sql(sql=sql)
+        else:
+            df_pct_top_grp = df_pct_top_grp.append(db._exec_sql(sql=sql))
+
+    if not df_pct_top_grp.empty or df_pct_top_grp is not None:
+        df_pct_top_grp.reset_index(drop=True, inplace=True)
+        df_pct_top_grp.replace([None], ['None'], inplace=True)
+        web_data.db_load_into_hot_industry(df_hot_industry=df_pct_top_grp)
+    else:
+        wx.info("[update_hot_industry] {}-{} 时间段内 没有数据".format(start_date, end_date))
+
 
 """
 # Logger 测试代码

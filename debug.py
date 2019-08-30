@@ -17,6 +17,14 @@ from filter_package import filter_fix
 from assess_package import back_trader
 from functions import *
 
+# wx.info("============================[update_sh_basic_info_2]上证主板基础信息更新==========================================")
+# update_sh_basic_info_2()
+# wx.info("============================[update_sh_basic_info_kc]科创板基础信息更新==========================================")
+# update_sh_basic_info_kc()
+# analysis_dgj()
+
+
+
 # bt = back_trader(f_date='20190130', f_b_days=-100,  f_name='filter_rules\\filter_001.conf')
 # bt.clear_bt_data()
 # bt.get_qfq_data()
@@ -25,8 +33,18 @@ from functions import *
 # update_sh_basic_info_kc()
 # update_sh_basic_info_2()
 
-wx.info("============================[filter_A 选股]==========================================")
-filter_A(data_src='qfq')
+# wx.info("============================[filter_A 选股]==========================================")
+# filter_A(data_src='qfq')
+# wx.info("============================[update_sh_basic_info_2]上证主板基础信息更新==========================================")
+# update_sh_basic_info_2()
+# wx.info("============================[update_sh_basic_info_kc]科创板基础信息更新==========================================")
+# update_sh_basic_info_kc()
+# wx.info("============================[update_sz_basic_info]深证主板、中小板、创业板基础信息更新==========================================")
+# update_sz_basic_info()
+# wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
+# update_sw_industry_into_basic_info()
+wx.info("============================[filter_B 选股]==========================================")
+filter_B(data_src='qfq')
 
 # update_daily_data_from_ts(period = -1)
 # wx.info("============================[update_last_day_qfq_data_from_ts]更新个股前复权数据==========================================")

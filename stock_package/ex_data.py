@@ -50,6 +50,7 @@ class ex_web_data(object):
             self.bt_dd_qfq_002 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_002')
             self.bt_dd_qfq_68 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_68')
 
+            self.dd_hot_industry = self.h_conf.rd_opt('db', 'dd_hot_industry')
             # wx.info("[OBJ] ex_web_data : __init__ called")
         except Exception as e:
             raise e
@@ -245,7 +246,7 @@ class ex_web_data(object):
         try:
             raw_data = http.request('GET', url, headers=header)
         except Exception as e:
-            raise e
+            return None
         finally:
             if raw_data.status >= 300:
                 wx.info("Web response failed : {}".format(url))
@@ -453,6 +454,29 @@ class ex_web_data(object):
               "s_price=%s, s_vol_tf=%s"
         self.db.cursor.executemany(sql, ws_sh_array)
         self.db.handle.commit()
+
+    def db_load_into_hot_industry(self, df_hot_industry=None):
+        wx = lg.get_handle()
+        if df_hot_industry is None or df_hot_industry.empty:
+            wx.info("[db_load_into_hot_industry]Err: df_hot_industy is Empty,")
+            return -1
+        hot_industy_array = df_hot_industry.values.tolist()
+        i = 0
+        while i < len(hot_industy_array):
+            hot_industy_array[i] = tuple(hot_industy_array[i])
+            i += 1
+
+        sql = "REPLACE INTO "+self.dd_hot_industry+" SET id=%s, date=%s, name=%s, industry_code=%s, industry_name=%s, pct_chg=%s"
+
+        i_scale = 1000
+        for i in range(0, len(hot_industy_array), i_scale):
+            tmp_arry = hot_industy_array[i : i+i_scale]
+            wx.info("[db_load_into_hot_industry][{}] Loaded {} ~ {} , total {} " .
+                    format(self.dd_hot_industry, i, i + i_scale, len(hot_industy_array)))
+            self.db.cursor.executemany(sql, hot_industy_array)
+            self.db.handle.commit()
+
+
 
     def whole_sales_stock_id(self):
         sql = "select distinct id from ws_201901"

@@ -174,4 +174,5 @@ class analyzer():
         self.db.cursor.executemany(sql, ana_array)
         self.db.handle.commit()
 
-
+    def ana_hot_industry(self, duration = 5):
+        pass
