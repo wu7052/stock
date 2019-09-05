@@ -258,6 +258,7 @@ def update_sw_industry_into_basic_info():
                                 "Market_Center.getHQNodeData?page=" + str(page_counter) + "&num=80&sort=symbol&asc=1&" \
                                                                                           "node=sw2_" + str(
                 code[0]) + "&symbol=&_s_r_a=setlen"
+            wx.info("SW Industry query Code : {}".format(code))
             stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
             time.sleep(1)
 
@@ -272,6 +273,8 @@ def update_sw_industry_into_basic_info():
                 #         format(code_counter, len(sw_industry_arr), code[0], sina_industry_url))
                 # time.sleep(10)
                 # stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
+                wx.info("SW Industry {}:{} Code:{} Page {} Empty, Move to Next Code ".
+                        format(code_counter, len(sw_industry_arr), code[0],page_counter))
                 break
             else:
                 wx.info("SW Industry {}:{}  Code:{}  Page:{} loaded into basic info table".
@@ -342,9 +345,109 @@ def update_daily_data_from_sina(date=None):  # date 把数据更新到指定日�
     except Exception as e:
         wx.info("Err [update_daily_data_from_sina]: {}".format(e))
 
+"""
+# 按日期，一次性获得当日所有股票数据，从Tushare
+"""
+def update_dd_by_date_from_ts(q_date=''):
+    wx = lg.get_handle()
+    ts = ts_data()
+    web_data = ex_web_data()
+    name_arr = (('^002', '002%', '中小板'), ('^60', '60%', '上证 主板'), ('^00[0,1,3-9]', '00%', '深证 主板'),
+                ('^30', '30%', '创业板'), ('^68', '68%', '科创板'))
+    if q_date == '':
+        wx.info("[update_dd_by_date_from_ts] 日期为空，退出" )
+        return
+    try:
+        dd_df = ts.acquire_daily_data_by_date(q_date=q_date)
+        while dd_df is None:
+            wx.info("[update_dd_by_date_from_ts]从Tushare获取 {} 数据失败, 休眠10秒后重试 ...".format(q_date))
+            time.sleep(10)
+            dd_df = ts.acquire_daily_data_by_date(q_date=q_date)
+    except Exception as e:
+        wx.info("Err:[update_dd_by_date_from_ts]---{}".format(e))
+    dd_df['ts_code'] = dd_df['ts_code'].apply(lambda x: x[0:6])
 
+    """暂时屏蔽
+    # 除权数据 导入数据表
+    for name in name_arr:
+        # 根据板块拆分 dataframe ，导入数据表
+        df_tmp = dd_df[dd_df['ts_code'].str.contains(name[0])]
+        # df_00 = dd_df[dd_df['ts_code'].str.contains("^00[0,1,3-9]")]
+        # df_002 = dd_df[dd_df['ts_code'].str.contains("^002")]
+        # df_60 = dd_df[dd_df['ts_code'].str.contains("^60")]
+        # df_68 = dd_df[dd_df['ts_code'].str.contains("^68")]
+        web_data.db_load_into_daily_data(dd_df=df_tmp, pre_id=name[1], mode='basic', type='cq')
+    wx.info("[update_dd_by_date_from_ts] 除权数据已导入数据表，开始处理 前复权 数据")
+    """
+
+    end_datetime_str = (date.today()).strftime('%Y%m%d')
+    end_datetime = datetime.strptime(end_datetime_str, '%Y%m%d')
+    cur_datetime_str = q_date
+    end_factor_df = ts.acquire_factor(date=end_datetime_str)
+    while end_factor_df is None:
+        wx.info("[update_dd_by_date_from_ts]获取最近日期的 复权因子失败，等待10秒，再次尝试...")
+        time.sleep(10)
+        end_factor_df = ts.acquire_factor(date=end_datetime_str)
+
+    while end_factor_df.empty:
+        end_datetime += timedelta(days=-1)
+        end_datetime_str = end_datetime.strftime('%Y%m%d')
+        wx.info("[update_dd_by_date_from_ts]获取 最近日期的 复权因子为空，向前一日获取{}".format(end_datetime_str))
+        end_factor_df = ts.acquire_factor(date=end_datetime_str)
+
+    cur_factor_df = ts.acquire_factor(date=cur_datetime_str)
+    while cur_factor_df is None:
+        wx.info("[update_dd_by_date_from_ts]获取{}的 复权因子失败，等待10秒，再次尝试...".format(cur_datetime_str))
+        time.sleep(10)
+        cur_factor_df = ts.acquire_factor(date=cur_datetime_str)
+
+    # 左链接，合并 cur_factor_df / end_factor_df 两张表
+    factor_tmp = pd.merge(cur_factor_df, end_factor_df, on='ts_code', how='left')
+    factor_tmp.rename(
+        columns={'ts_code': 'id', 'trade_date_x': 'date', 'adj_factor_x': 'cur_factor',
+                 'trade_date_y': 'end_date', 'adj_factor_y': 'end_factor'}, inplace=True)
+
+    # cur_factor_df 所有复权因子保留，期末的复权因子为空，则设置0
+    factor_tmp.fillna(0, inplace=True)
+    # 期末复权因子为空的股票，计入 异常清单
+    factor_abnormal_df = pd.DataFrame()
+    factor_abnormal_df = factor_abnormal_df.append(factor_tmp[(factor_tmp['end_factor'] == 0)])
+
+    # 删除期末复权因子为空的记录
+    factor_tmp = factor_tmp[~(factor_tmp['end_factor'].isin([0]))]
+
+    # 复权因子相除
+    factor_tmp['d_factor'] = factor_tmp['cur_factor'] / factor_tmp['end_factor']
+    factor_tmp['id'] = factor_tmp['id'].apply(lambda x: x[0:6])
+
+    dd_df.rename(
+        columns={'ts_code': 'id', 'trade_date': 'date'}, inplace=True)
+
+    dd_df = pd.merge(dd_df, factor_tmp, on=['id', 'date'], how='left')
+    dd_df['open'] *= dd_df['d_factor']
+    dd_df['high'] *= dd_df['d_factor']
+    dd_df['low'] *= dd_df['d_factor']
+    dd_df['close'] *= dd_df['d_factor']
+    dd_df.drop(['cur_factor', 'end_date', 'end_factor', 'd_factor'], axis=1, inplace=True)
+    dd_df.fillna(0, inplace=True)
+
+    # 前复权数据 导入数据表
+    for name in name_arr:
+        # 根据板块拆分 dataframe ，导入数据表
+        df_tmp = dd_df[dd_df['id'].str.contains(name[0])]
+        # df_00 = dd_df[dd_df['ts_code'].str.contains("^00[0,1,3-9]")]
+        # df_002 = dd_df[dd_df['ts_code'].str.contains("^002")]
+        # df_60 = dd_df[dd_df['ts_code'].str.contains("^60")]
+        # df_68 = dd_df[dd_df['ts_code'].str.contains("^68")]
+        web_data.db_load_into_daily_data(dd_df=df_tmp, pre_id=name[1], mode='basic', type='qfq')
+    wx.info("[update_dd_by_date_from_ts] 前复权数据已导入数据表，开始处理 异常 数据")
+
+
+"""
+# 按股票代码，逐个获取数据从Tushare
+"""
 @wx_timer
-def update_daily_data_from_ts(period=-1, type='cq'):
+def update_dd_by_id_from_ts(period=-1, type='cq'):
     wx = lg.get_handle()
     ts = ts_data()
     web_data = ex_web_data()
@@ -361,16 +464,16 @@ def update_daily_data_from_ts(period=-1, type='cq'):
                 ts_code = id[0] + name[1]
                 dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
                 while dd_df is None:
-                    wx.info("[update_daily_data_from_ts]...Failed {}, sleep 10 sec, retry ...".format(ts_code))
+                    wx.info("[update_dd_by_id_from_ts]...Failed {}, sleep 10 sec, retry ...".format(ts_code))
                     time.sleep(10)
                     dd_df = ts.acquire_daily_data(code=ts_code, period=period, type=type)
                 dd_df['ts_code'] = id[0]
                 web_data.db_load_into_daily_data(dd_df=dd_df, pre_id=name[0], mode='basic', type='cq')
                 web_data.db_load_into_daily_data(dd_df=dd_df, pre_id=name[0], mode='basic', type='qfq')
-                wx.info("[update_daily_data_from_ts] {}/{} completed".format(counter, len(id_array)))
+                wx.info("[update_dd_by_id_from_ts] {}/{} completed".format(counter, len(id_array)))
                 counter += 1
     except Exception as e:
-        wx.info("Err:[update_daily_data_from_ts]---{}".format(e))
+        wx.info("Err:[update_dd_by_id_from_ts]---{}".format(e))
     finally:
         pass
 
@@ -999,7 +1102,7 @@ def report_repo_completion_data(rp=None):
 """
 
 @wx_timer
-def analysis_hot_industry(duration = 5):
+def analysis_hot_industry(duration = 3):
     ana = analyzer()
     ana.ana_hot_industry(duration = duration)
 
@@ -1085,7 +1188,7 @@ def analysis_summary_list(rp=None):
 @wx_timer
 def analysis_single_stock(rp=None, id_arr=None):
     ana = analyzer()
-    start_date = (date.today() + timedelta(days=-365)).strftime('%Y%m%d')
+    start_date = (date.today() + timedelta(days=-90)).strftime('%Y%m%d')
     for s_id in id_arr:
         ret_dict = ana.ana_single_stock(s_id=s_id, start_date=start_date)
         rp.output_docx(filename=ret_dict['title'], para_dict=ret_dict)

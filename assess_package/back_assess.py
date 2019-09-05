@@ -148,6 +148,8 @@ class back_trader:
         wx = lg.get_handle()
 
         # 从tushare 获得复权因子
+        # end_datetime 动态复权的期末；
+        # cur_datetime 动态复权的 游标，指向正计算复权值的日期
         end_datetime = datetime.strptime(self.f_end_date, '%Y%m%d')
         cur_datetime = datetime.strptime(self.f_begin_date, '%Y%m%d')
 

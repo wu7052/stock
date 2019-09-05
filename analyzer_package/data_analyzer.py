@@ -1,25 +1,31 @@
 from conf import conf_handler
 import new_logger as lg
 from db_package import db_ops
-from datetime import datetime, time, date, timedelta
+from datetime import date, timedelta
+import datetime
 import pandas as pd
 import re
-
+from painter_package import mp_painter
 
 class analyzer():
     def __init__(self):
         try:
             wx = lg.get_handle()
             self.h_conf = conf_handler(conf="stock_analyer.conf")
-            # secs = h_conf.rd.sections()
-            # wx.info("conf :{}".format(secs))
             host = self.h_conf.rd_opt('db', 'host')
             database = self.h_conf.rd_opt('db', 'database')
             user = self.h_conf.rd_opt('db', 'user')
             pwd = self.h_conf.rd_opt('db', 'pwd')
-            # wx.info("conf :{}:{}:{}:{}".format(host, database, user, pwd))
             self.db = db_ops(host=host, db=database, user=user, pwd=pwd)
-            wx.info("[OBJ] analyzer __init__() called")
+            self.dd_hot_industry = self.h_conf.rd_opt('db', 'dd_hot_industry')
+            # wx.info("[OBJ] analyzer __init__() called")
+
+            self.dd_cq_00 = self.h_conf.rd_opt('db', 'daily_table_cq_00')
+            self.dd_cq_30 = self.h_conf.rd_opt('db', 'daily_table_cq_30')
+            self.dd_cq_60 = self.h_conf.rd_opt('db', 'daily_table_cq_60')
+            self.dd_cq_002 = self.h_conf.rd_opt('db', 'daily_table_cq_002')
+            self.dd_cq_68 = self.h_conf.rd_opt('db', 'daily_table_cq_68')
+
         except Exception as e:
             raise e
 
@@ -34,13 +40,13 @@ class analyzer():
 
         # 最近收盘价
         if re.match(r'^002', s_id):
-            sql = "select date as `日期`, close as `收盘价` from code_002_201901 where id = " + s_id + " order by date desc limit 1"
+            sql = "select date as `日期`, close as `收盘价` from "+self.dd_cq_002+" where id = " + s_id + " order by date desc limit 1"
         elif re.match(r'^00', s_id):
-            sql = "select date as `日期`, close as `收盘价` from code_00_201901 where id = " + s_id + " order by date desc limit 1"
+            sql = "select date as `日期`, close as `收盘价` from "+self.dd_cq_00+" where id = " + s_id + " order by date desc limit 1"
         elif re.match(r'^60', s_id):
-            sql = "select date as `日期`, close as `收盘价` from code_60_201901 where id = " + s_id + " order by date desc limit 1"
+            sql = "select date as `日期`, close as `收盘价` from "+self.dd_cq_60+" where id = " + s_id + " order by date desc limit 1"
         elif re.match(r'^30', s_id):
-            sql = "select date as `日期`, close as `收盘价` from code_30_201901 where id = " + s_id + " order by date desc limit 1"
+            sql = "select date as `日期`, close as `收盘价` from "+self.dd_cq_30+" where id = " + s_id + " order by date desc limit 1"
         query_dict['最新收盘价'] = sql
 
         # 董高监 买入 数量 、金额 和 均价
@@ -174,5 +180,52 @@ class analyzer():
         self.db.cursor.executemany(sql, ana_array)
         self.db.handle.commit()
 
-    def ana_hot_industry(self, duration = 5):
+    def ana_hot_industry(self, duration = 3):
+        end_date = datetime.date.today().strftime('%Y%m%d')
+        start_date = (datetime.date.today() + datetime.timedelta(days=duration*-1)).strftime('%Y%m%d')
+        sql = "SELECT date, industry_name , count(industry_name) as qty FROM stock.dd_hot_industry " \
+              " where date between "+start_date+" and "+end_date+" group by date, industry_name order by date desc"
+
+        df_hot_industry = self.db._exec_sql(sql=sql)
+        x_lable = list()
+        df_ret = pd.DataFrame()
+
+        dd_grp_by_date = df_hot_industry.groupby(['date']).apply(lambda x: x.sort_values(by=['qty'], ascending=False).head(10))
+        dd_grp_by_date.reset_index(drop=True, inplace=True)
+        industry_arr = list(set(dd_grp_by_date.industry_name.tolist()))
+        date_arr = list(set(dd_grp_by_date.date.tolist()))
+
+        # 生成 全部日期、全部行业 的 qty=0 的 DataFrame
+        zero_dd_grp_by_date = pd.DataFrame()
+        for date in date_arr:
+            df_tmp = pd.DataFrame({'date': [date]*len(industry_arr),
+                                   'industry_name':industry_arr,
+                                   'qty_y':[0]*len(industry_arr)})
+            zero_dd_grp_by_date = zero_dd_grp_by_date.append(df_tmp)
+
+        dd_grp_by_date = pd.merge(dd_grp_by_date,zero_dd_grp_by_date, how='outer', on=['date','industry_name'])
+        dd_grp_by_date.sort_values(by=['date'], ascending=True, inplace=True)
+        dd_grp_by_date.fillna(0, inplace=True)
+        dd_grp_by_date.drop('qty_y', axis=1, inplace=True)
+        # 为了明显，把 0 设置为 -1
+        dd_grp_by_date.loc[dd_grp_by_date['qty'] == 0, 'qty'] = -1
+        # 开始画柱状图，以日期为 X 主坐标， X副坐标为 行业
+        painter = mp_painter()
+        painter.para_pillar_draw(x_label=industry_arr , x_sub_label=date_arr, df= dd_grp_by_date)
+
+        # for industry in industry_arr:
+        #     plt.bar(x, num_list, width=width, label='boy', fc='y')
+
+        """ 用 apply 函数替代了
+        for count, df_hot_by_date in enumerate(dd_grp_by_date):
+            # X 轴数组 保存日期
+            x_lable.append(df_hot_by_date[0])
+            df_tmp = df_hot_by_date[1].sort_values(by=['qty'], ascending=False).head(10)
+            df_tmp.set_index('date', inplace=True)
+            if df_ret.empty:
+                df_ret= df_tmp
+            else:
+                df_ret = pd.concat([df_ret,df_tmp],axis=0,join='outer')
+            """
+
         pass

@@ -30,12 +30,12 @@ from functions import *
 # 从上证、深证 网站更新 A 股基础信息
 # 从申银万国 更新 行业分类
 """
-wx.info("============================[update_sh_basic_info_2]上证主板基础信息更新==========================================")
-update_sh_basic_info_2()
-wx.info("============================[update_sh_basic_info_kc]科创板基础信息更新==========================================")
-update_sh_basic_info_kc()
-wx.info("============================[update_sz_basic_info]深证主板、中小板、创业板基础信息更新==========================================")
-update_sz_basic_info()
+# wx.info("============================[update_sh_basic_info_2]上证主板基础信息更新==========================================")
+# update_sh_basic_info_2()
+# wx.info("============================[update_sh_basic_info_kc]科创板基础信息更新==========================================")
+# update_sh_basic_info_kc()
+# wx.info("============================[update_sz_basic_info]深证主板、中小板、创业板基础信息更新==========================================")
+# update_sz_basic_info()
 wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
 update_sw_industry_into_basic_info()
 
@@ -61,7 +61,14 @@ qfq_id_arr = update_last_day_qfq_data_from_ts()
 # 从tushare 获取前一天的 交易数据, type = 'cq' 表示除权价格； type = 'qfq' 表示前复权价格
 # 同时更新  'cq' \ 'qfq' 两类表
 """
-# update_daily_data_from_ts(period = -1)
+# update_dd_by_id_from_ts(period = -1)
+
+"""####################################################################
+# 从tushare 获取指定日期的 交易数据, type = 'cq' 表示除权价格； type = 'qfq' 表示前复权价格
+# 同时更新  'cq' \ 'qfq' 两类表
+"""
+# update_dd_by_id_from_ts(period = -1)
+
 
 
 """####################################################################
@@ -109,8 +116,8 @@ update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
 # 最近五个交易日的 热点板块的统计图
 # X坐标日期、板块名，各板块的个股数量
 """
-update_hot_industry()
-
+update_hot_industry(start_date='',end_date='')
+analysis_hot_industry(duration = 5)
 """
 #  根据规则筛选股票，PE、收盘价、流通金额、Ma55、高点左右侧得分、黄金比例、
 #  f_date='' 默认时间是最近交易日，或指定回测日期

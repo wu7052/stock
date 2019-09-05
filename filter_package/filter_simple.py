@@ -1,7 +1,7 @@
 from db_package import db_ops
 from conf import conf_handler
 import new_logger as lg
-from datetime import  date, timedelta
+from datetime import date, timedelta
 import pandas as pd
 from stock_package import ex_web_data
 
@@ -285,6 +285,6 @@ class filter_fix:
         if not df_pct_top_grp.empty:
             df_pct_top_grp.reset_index(drop=True,inplace=True)
             df_pct_top_grp.replace([None], ['None'], inplace=True)
-            web_data.db_load_into_hot_industry(df_hot_industry=df_pct_top_grp)
+            # web_data.db_load_into_hot_industry(df_hot_industry=df_pct_top_grp)
 
         return df_pct_top_grp

@@ -22,9 +22,8 @@ from functions import *
 # wx.info("============================[update_sh_basic_info_kc]科创板基础信息更新==========================================")
 # update_sh_basic_info_kc()
 # analysis_dgj()
-
-
-
+# analysis_hot_industry(duration = 10)
+# 按板块股票数量 比例出图
 # bt = back_trader(f_date='20190130', f_b_days=-100,  f_name='filter_rules\\filter_001.conf')
 # bt.clear_bt_data()
 # bt.get_qfq_data()
@@ -43,8 +42,6 @@ from functions import *
 # update_sz_basic_info()
 # wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
 # update_sw_industry_into_basic_info()
-wx.info("============================[filter_B 选股]==========================================")
-filter_B(data_src='qfq')
 
 # update_daily_data_from_ts(period = -1)
 # wx.info("============================[update_last_day_qfq_data_from_ts]更新个股前复权数据==========================================")
@@ -70,7 +67,12 @@ filter_B(data_src='qfq')
 # wx.info("============================[update_ind_ma_df]前复权数据指标（增量更新）==========================================")
 # update_ind_ma_df(fresh=True, data_src='qfq')
 # wx.info("============================[update_ind_ma_single]当日个股前复权数据指标（个股全部更新）==========================================")
-# update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
+# update_ind_ma_single(id_arr=['002415'], data_src='qfq')
 # 常用功能，从 eastmoney 获得全部的 日交易数据，同时更新  'cq' \ 'qfq' 两类表
 # wx.info("============================[update_daily_data_from_eastmoney]当日交易数据==========================================")
 # update_daily_data_from_eastmoney(supplement=False)
+
+wx.info("============================[update_dd_by_date_from_ts] 更新指定日期的交易数据==========================================")
+update_dd_by_date_from_ts(q_date='20190726')
+# reporter = ws_rp()
+# analysis_single_stock(rp=reporter, id_arr = ['600516'])

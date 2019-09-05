@@ -91,3 +91,13 @@ class ts_data:
         ts_data.__counter += 1
         wx.info("tushare completed called {} times，id: {} ".format(ts_data.__counter, code))
         return df
+
+    def acquire_daily_data_by_date(self, q_date=''):
+        wx = lg.get_handle()
+        dd_df = self.api.daily(trade_date=q_date)
+        while dd_df is None:
+            wx.info("[Tushare][acquire_daily_data_by_date] 从Tushare获取 {} 数据失败, 休眠10秒后重试 ...".format(q_date))
+            time.sleep(10)
+            dd_df = self.api.daily(trade_date=q_date)
+
+        return dd_df
