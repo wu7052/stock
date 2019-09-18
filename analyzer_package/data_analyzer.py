@@ -180,42 +180,85 @@ class analyzer():
         self.db.cursor.executemany(sql, ana_array)
         self.db.handle.commit()
 
-    def ana_hot_industry(self, duration = 3):
-        end_date = datetime.date.today().strftime('%Y%m%d')
-        start_date = (datetime.date.today() + datetime.timedelta(days=duration*-1)).strftime('%Y%m%d')
-        sql = "SELECT date, industry_name , count(industry_name) as qty FROM stock.dd_hot_industry " \
-              " where date between "+start_date+" and "+end_date+" group by date, industry_name order by date desc"
-
-        df_hot_industry = self.db._exec_sql(sql=sql)
-        x_lable = list()
-        df_ret = pd.DataFrame()
-
-        dd_grp_by_date = df_hot_industry.groupby(['date']).apply(lambda x: x.sort_values(by=['qty'], ascending=False).head(10))
-        dd_grp_by_date.reset_index(drop=True, inplace=True)
-        industry_arr = list(set(dd_grp_by_date.industry_name.tolist()))
-        date_arr = list(set(dd_grp_by_date.date.tolist()))
+    def _draw_hot_industry_para_pillar(self, df_industry_pillar = None, title=''):
+        industry_arr = list(set(df_industry_pillar.industry_name.tolist()))
+        date_arr = list(set(df_industry_pillar.date.tolist()))
 
         # 生成 全部日期、全部行业 的 qty=0 的 DataFrame
-        zero_dd_grp_by_date = pd.DataFrame()
+        zero_df_industry_pillar = pd.DataFrame()
         for date in date_arr:
             df_tmp = pd.DataFrame({'date': [date]*len(industry_arr),
                                    'industry_name':industry_arr,
                                    'qty_y':[0]*len(industry_arr)})
-            zero_dd_grp_by_date = zero_dd_grp_by_date.append(df_tmp)
+            zero_df_industry_pillar = zero_df_industry_pillar.append(df_tmp)
 
-        dd_grp_by_date = pd.merge(dd_grp_by_date,zero_dd_grp_by_date, how='outer', on=['date','industry_name'])
-        dd_grp_by_date.sort_values(by=['date'], ascending=True, inplace=True)
-        dd_grp_by_date.fillna(0, inplace=True)
-        dd_grp_by_date.drop('qty_y', axis=1, inplace=True)
+        df_industry_pillar = pd.merge(df_industry_pillar,zero_df_industry_pillar, how='outer', on=['date','industry_name'])
+        df_industry_pillar.sort_values(by=['date','industry_name'], ascending=True, inplace=True)
         # 为了明显，把 0 设置为 -1
-        dd_grp_by_date.loc[dd_grp_by_date['qty'] == 0, 'qty'] = -1
+        df_industry_pillar.fillna(-1, inplace=True)
+        df_industry_pillar.drop('qty_y', axis=1, inplace=True)
+        # df_industry_pillar.loc[df_industry_pillar['qty'] == 0, 'qty'] = -1
         # 开始画柱状图，以日期为 X 主坐标， X副坐标为 行业
         painter = mp_painter()
-        painter.para_pillar_draw(x_label=industry_arr , x_sub_label=date_arr, df= dd_grp_by_date)
+        painter.para_pillar_draw(x_label=industry_arr,
+                                 x_sub_label=date_arr,
+                                 df= df_industry_pillar,
+                                 title=title)
+        # painter.para_pillar_draw(x_label=df_industry_pillar.industry_name.tolist() ,
+        #                          x_sub_label=df_industry_pillar.date.tolist(),
+        #                          df= df_industry_pillar)
 
-        # for industry in industry_arr:
-        #     plt.bar(x, num_list, width=width, label='boy', fc='y')
+    def ana_hot_industry(self, duration = 3, level = 1):
+        end_date = datetime.date.today().strftime('%Y%m%d')
+        start_date = (datetime.date.today() + datetime.timedelta(days=duration*-1)).strftime('%Y%m%d')
 
+        if level ==1:
+            # 按日期统计 dd_hot_industry 表的前10名
+            sql = "SELECT date, industry_code, industry_name , count(industry_name) as qty FROM stock.dd_hot_industry " \
+                  " where date between "+start_date+" and "+end_date+" group by date, industry_name order by date desc"
+            df_hot_industry = self.db._exec_sql(sql=sql)
+
+            # 统计各个板块的股票数量
+            sql1 = 'select sw_level_1 as industry_code, count(id) as total_qty  from list_a  ' \
+                  ' where sw_level_1 is not NULL group by sw_level_1'
+            df_industry_qty = self.db._exec_sql(sql=sql1)
+        elif level == 2:
+            # 按日期统计 dd_hot_industry 表的前10名
+            sql = "SELECT date, industry_code_2 as industry_code, industry_name_2 as industry_name , count(industry_name_2) as qty FROM stock.dd_hot_industry " \
+                  " where date between " + start_date + " and " + end_date + " group by date, industry_name_2 order by date desc"
+            df_hot_industry = self.db._exec_sql(sql=sql)
+
+            # 统计各个板块的股票数量
+            sql1 = 'select sw_level_2 as industry_code, count(id) as total_qty  from list_a  ' \
+                   ' where sw_level_2 is not NULL group by sw_level_2'
+            df_industry_qty = self.db._exec_sql(sql=sql1)
+
+
+        # 生成按股票数量/该板块总数 的柱状图的 dataframe
+        dd_percent_hot_industry = pd.merge(df_hot_industry, df_industry_qty, how='left', on=['industry_code'])
+        dd_percent_hot_industry['qty'] = dd_percent_hot_industry['qty'] / dd_percent_hot_industry['total_qty']*100
+        dd_percent_hot_industry = dd_percent_hot_industry.groupby(['date']).apply(
+            lambda x: x.sort_values(by=['qty'], ascending=False).head(10))
+        dd_percent_hot_industry.reset_index(drop=True, inplace=True)
+        dd_percent_hot_industry.drop('total_qty', axis=1, inplace=True)
+        dd_percent_hot_industry.sort_values(by=['date','industry_name'], ascending=True, inplace=True)
+        dd_percent_hot_industry.reset_index(drop=True, inplace=True)
+        self._draw_hot_industry_para_pillar(df_industry_pillar = dd_percent_hot_industry, title='个股涨幅榜（按Level_'+level+'_行业内占比）')
+
+        # 生成按股票数量统计 柱状图的 dataframe
+        dd_grp_by_date = df_hot_industry.groupby(['date']).apply(
+            lambda x: x.sort_values(by=['qty'], ascending=False).head(10))
+        dd_grp_by_date.reset_index(drop=True, inplace=True)
+        dd_grp_by_date.sort_values(by=['date','industry_name'], ascending=True, inplace=True)
+        self._draw_hot_industry_para_pillar(df_industry_pillar = dd_grp_by_date, title='个股涨幅榜（按Level_'+level+'_行业分类数量）')
+
+        dd_final_hot = pd.merge(dd_grp_by_date, dd_percent_hot_industry , how='inner', on=['date','industry_name','industry_code'])
+        dd_final_hot.sort_values(by=['date','industry_name'], ascending=True, inplace=True)
+        dd_final_hot.drop(['qty_y'], axis=1, inplace=True)
+        dd_final_hot.rename(columns={'qty_x': 'qty'}, inplace=True)
+        dd_final_hot.reset_index(drop=True, inplace=True)
+        self._draw_hot_industry_para_pillar(df_industry_pillar=dd_final_hot,title='个股涨幅榜（按Level_'+level+'_占比、数量综合）')
+        # print(dd_final_hot)
         """ 用 apply 函数替代了
         for count, df_hot_by_date in enumerate(dd_grp_by_date):
             # X 轴数组 保存日期
@@ -227,5 +270,3 @@ class analyzer():
             else:
                 df_ret = pd.concat([df_ret,df_tmp],axis=0,join='outer')
             """
-
-        pass

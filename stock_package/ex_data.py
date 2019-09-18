@@ -170,7 +170,7 @@ class ex_web_data(object):
             sql = "update list_a set sw_level_1=%s , sw_level_2=%s where id = %s" % (sw_level_1, sw_level_2, s_id)
             self.db.cursor.execute(sql)
             self.db.handle.commit()
-        wx.info("SW Industry Code {} updated {} stocks ".format(code, len(id_arr)))
+        # wx.info("SW Industry Code {} updated {} stocks ".format(code, len(id_arr)))
 
 
     def db_load_into_list_a_2(self, basic_info_df):
@@ -241,10 +241,12 @@ class ex_web_data(object):
                 'User-Agent': r'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.80 Safari/537.36'
             }
 
-        requests.packages.urllib3.disable_warnings()
+        # requests.packages.urllib3.disable_warnings()
         http = urllib3.PoolManager()
         try:
+            wx.info(" debug start GET URL ...")
             raw_data = http.request('GET', url, headers=header)
+            wx.info(" debug get Response URL ...")
         except Exception as e:
             return None
         finally:
@@ -466,7 +468,8 @@ class ex_web_data(object):
             hot_industy_array[i] = tuple(hot_industy_array[i])
             i += 1
 
-        sql = "REPLACE INTO "+self.dd_hot_industry+" SET id=%s, date=%s, name=%s, industry_code=%s, industry_name=%s, pct_chg=%s"
+        sql = "REPLACE INTO "+self.dd_hot_industry+" SET id=%s, date=%s, name=%s, " \
+              "industry_code=%s, industry_name=%s, industry_code_2=%s, industry_name_2=%s, pct_chg=%s"
 
         i_scale = 1000
         for i in range(0, len(hot_industy_array), i_scale):
@@ -498,7 +501,9 @@ class ex_web_data(object):
         if iCount == 1:
             result = self.db.cursor.fetchone()
             record_date = datetime.strptime(result[0], "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
-            start_date = (record_date + timedelta(days=1)).strftime('%Y-%m-%d')  # 起始日期 为记录日期+1天
+            start_date = record_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期，格式如： 2019-01-11
+            # start_date = (record_date + timedelta(days=1)).strftime('%Y-%m-%d')  # 起始日期 为记录日期+1天
+            self.whole_sales_data_remove(start_date=result[0])
             return start_date
         else:
             return None
@@ -581,8 +586,11 @@ class ex_web_data(object):
             return False
         return True
 
-    def whole_sales_data_remove(self):
-        sql = "delete from ws_201901 "
+    def whole_sales_data_remove(self, start_date=''):
+        if start_date == '':
+            sql = "delete from ws_201901 "
+        else:
+            sql = 'delete from ws_201901 where date >= '+start_date
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
         return iCount
@@ -614,14 +622,13 @@ class ex_web_data(object):
             # first_date = result[0][0]
             # second_date = result[1][0]
             third_date = result[2][0]
-            # record_date = datetime.strptime(result[0], "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
-            # start_date = record_date.strftime('%Y%m%d')  # 起始日期 为记录日期+1天
+            # 数据保留到 third_date , 之后两天的数据都删除掉，并设置 start_date 为 third_date
             sql = "delete from " + table_name + " where date > " + third_date
             iCount = self.db.cursor.execute(sql)  # 返回值
             self.db.handle.commit()
 
             start_date = datetime.strptime(third_date, "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
-            start_date = start_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期+1天
+            start_date = start_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期，
 
             return start_date
         else:

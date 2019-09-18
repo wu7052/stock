@@ -36,6 +36,29 @@ class ts_data:
             df_factor = self.api.query('adj_factor', trade_date=date)
         return df_factor
 
+    """
+    # 获取指定日期之后的交易日历
+    """
+    def acquire_trade_cal(self, start_date='', end_date=''):
+        wx = lg.get_handle()
+        if start_date == '' or end_date == '':
+            wx.info("[acquire_trade_cal] 开始 或 结束日期为空，错误退出")
+            return None
+        # today = datetime.now().strftime('%Y%m%d')
+        try:
+            df_trade_cal = self.api.trade_cal(exchange='', start_date=start_date, end_date=end_date)
+        except Exception as e:
+            wx.info("tushare exception: {}... sleep 10 seconds, retry....".format(e))
+            time.sleep(10)
+            df_trade_cal = self.api.trade_cal(exchange='', start_date=start_date, end_date=end_date)
+        df_trade_cal.drop('exchange', axis=1, inplace=True)
+        df_trade_cal.rename(columns={'cal_date': 'date'}, inplace=True)
+        df_trade_cal = df_trade_cal[~(df_trade_cal['is_open'].isin([0]))]
+        return df_trade_cal
+
+    """
+    # 获取指定时间区间的 前复权数据
+    """
     def acquire_qfq_period(self, id, start_date, end_date):
         wx = lg.get_handle()
         try:

@@ -98,7 +98,7 @@ class ma_kits(object):
             sql = "select id, date, close from " + t_name + " where close > 0 and  date between  " \
                   + bt_start_date + " and "+bt_end_date+" order by id"
         else:
-            start_date = (datetime.now() + timedelta(days=-240)).strftime('%Y%m%d')  # 起始日期 为记录日期+1天
+            start_date = (datetime.now() + timedelta(days=-480)).strftime('%Y%m%d')  # 起始日期 为记录日期+1天
             sql = "select id, date, close from " + t_name + " where close > 0 and date >=  " + start_date + " order by id"
 
         df_ma = self.db._exec_sql(sql)

@@ -258,7 +258,7 @@ def update_sw_industry_into_basic_info():
                                 "Market_Center.getHQNodeData?page=" + str(page_counter) + "&num=80&sort=symbol&asc=1&" \
                                                                                           "node=sw2_" + str(
                 code[0]) + "&symbol=&_s_r_a=setlen"
-            wx.info("SW Industry query Code : {}".format(code))
+            wx.info("====== SW Industry query Code : {} , Page : {}====".format(code[0], page_counter))
             stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
             time.sleep(1)
 
@@ -367,7 +367,6 @@ def update_dd_by_date_from_ts(q_date=''):
         wx.info("Err:[update_dd_by_date_from_ts]---{}".format(e))
     dd_df['ts_code'] = dd_df['ts_code'].apply(lambda x: x[0:6])
 
-    """暂时屏蔽
     # 除权数据 导入数据表
     for name in name_arr:
         # 根据板块拆分 dataframe ，导入数据表
@@ -378,8 +377,8 @@ def update_dd_by_date_from_ts(q_date=''):
         # df_68 = dd_df[dd_df['ts_code'].str.contains("^68")]
         web_data.db_load_into_daily_data(dd_df=df_tmp, pre_id=name[1], mode='basic', type='cq')
     wx.info("[update_dd_by_date_from_ts] 除权数据已导入数据表，开始处理 前复权 数据")
-    """
 
+    # 前复权数据处理，从tushare 获得 复权因子
     end_datetime_str = (date.today()).strftime('%Y%m%d')
     end_datetime = datetime.strptime(end_datetime_str, '%Y%m%d')
     cur_datetime_str = q_date
@@ -787,7 +786,8 @@ def update_whole_sales_data_from_eastmoney(force=False):
         del_rows = web_data.whole_sales_remove_expired_data()
         wx.info("[update_whole_sales_data] {} Rows of Expired data Removed ".format(del_rows))
 
-        # 保持 ws表的数据，从最新日期+1 到 今天 ，获取web最新数据
+        # 保持 ws表的数据，从最新日期 到 今天 ，获取web最新数据
+        # 在 whole_sales_start_date() 已将 start_date 的数据全部删除，以防 start_date数据不完整，因此从start_date开始重新下载
         start_date = web_data.whole_sales_start_date()
         if start_date is None:
             wx.info("[update_whole_sales_data] Checking lastest date None")
@@ -796,7 +796,7 @@ def update_whole_sales_data_from_eastmoney(force=False):
     while True:
         ws_eastmoney_url = "http://dcfm.eastmoney.com/em_mutisvcexpandinterface/api/js/get?type=DZJYXQ&" \
                            "token=70f12f2f4f091e459a279469fe49eca5&cmd=&st=TDATE&sr=-1&" \
-                           "p=" + str(page_counter) + "&ps=50&js=var%20doXCfrVg=%7Bpages:(tp),data:(x)%7D&" \
+                           "p=" + str(page_counter) + "&ps=100&js=var%20doXCfrVg=%7Bpages:(tp),data:(x)%7D&" \
                                                       "filter=(Stype='EQA')(TDATE%3E=%5E" + start_date + \
                            "%5E%20and%20TDATE%3C=%5E" + today + "%5E)&rt=51576724"
         # wx.info(ws_eastmoney_url)
@@ -1102,9 +1102,9 @@ def report_repo_completion_data(rp=None):
 """
 
 @wx_timer
-def analysis_hot_industry(duration = 3):
+def analysis_hot_industry(duration = 5, level=1):
     ana = analyzer()
-    ana.ana_hot_industry(duration = duration)
+    ana.ana_hot_industry(duration = duration, level = level)
 
 
 @wx_timer
@@ -1188,7 +1188,7 @@ def analysis_summary_list(rp=None):
 @wx_timer
 def analysis_single_stock(rp=None, id_arr=None):
     ana = analyzer()
-    start_date = (date.today() + timedelta(days=-90)).strftime('%Y%m%d')
+    start_date = (date.today() + timedelta(days=-180)).strftime('%Y%m%d')
     for s_id in id_arr:
         ret_dict = ana.ana_single_stock(s_id=s_id, start_date=start_date)
         rp.output_docx(filename=ret_dict['title'], para_dict=ret_dict)
@@ -1234,8 +1234,10 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
         df_pe_grp = pd.DataFrame()
     else:
         wx.info("[Filter_A][Filter PE] {} founded ".format(len(df_pe_grp)))
+        df_pe_grp.rename(columns={'id': '股票代码'}, inplace=True)
     target_dict['PE Group'] = df_pe_grp
 
+    """
     # 前复权表
     df_amount_grp = filter_a.filter_tt_amount()
     if df_amount_grp is None or df_amount_grp.empty:
@@ -1244,8 +1246,7 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
     else:
         wx.info("[Filter_A][Filter Total Amount] {} founded".format(len(df_amount_grp)))
     target_dict['Amount Group'] = df_amount_grp
-
-    # df_target = pd.merge(df_pe_grp, df_amount_grp)
+    """
 
     # 前复权表
     df_below_ma55_grp = filter_a.filter_below_ma55()
@@ -1254,9 +1255,10 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
         df_below_ma55_grp = pd.DataFrame()
     else:
         wx.info("[Filter_A][Filter Below Ma 55] {} founded".format(len(df_below_ma55_grp)))
+        df_below_ma55_grp.rename(columns={'id': '股票代码', 'close': '最近交易日收盘价',
+                                          'ma_5': '5日均值', 'ma_55': '55日均值'}, inplace=True)
     target_dict['Ma55 Group'] = df_below_ma55_grp
 
-    # df_target = pd.merge(df_target, df_below_ma55_grp)
 
     # 前复权表
     df_high_price_grp = filter_a.filter_high_price()
@@ -1265,6 +1267,7 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
         df_high_price_grp = pd.DataFrame()
     else:
         wx.info("[Filter_A][Filter High Price] {} founded".format(len(df_high_price_grp)))
+        df_high_price_grp.rename(columns={'id': '股票代码', 'high': '最近交易日最高价'}, inplace=True)
     target_dict['High Price Group'] = df_high_price_grp
 
     df_target = pd.DataFrame()
@@ -1282,13 +1285,13 @@ def filter_A(data_src='qfq', f_start_date='', f_end_date=''):
         else:
             df_target = pd.merge(df_target, target_dict[key])
 
-    df_target.rename(columns={'id': '股票代码', 'tt_amount': '流通市值', 'close': '最近交易日收盘价',
-                              'ma_5': '5日均值', 'ma_55': '55日均值', 'high': '最近交易日最高价'}, inplace=True)
+    # df_target.rename(columns={'id': '股票代码', 'tt_amount': '流通市值', 'close': '最近交易日收盘价',
+    #                           'ma_5': '5日均值', 'ma_55': '55日均值', 'high': '最近交易日最高价'}, inplace=True)
     wx.info("[Filter_A] [PE + Amount + Ma55 + HighPrice] {} founded".format(len(df_target)))
 
     reporter = ws_rp()
-    # reporter.output_table(dd_df=df_target.round(2), sheet_name='PE_MA55_股本_股价筛选结果',
-    #                       filename='选股清单_1_' + data_src, type='.xlsx', index=False)
+    reporter.output_table(dd_df=df_target.round(2), sheet_name='PE_MA55_股本_股价筛选结果',
+                          filename='选股清单_1_' + data_src, type='.xlsx', index=False)
 
     # 前复权表
     df_filter_side = filter_b.filter_side()
@@ -1334,12 +1337,7 @@ def filter_B(data_src='qfq', f_start_date='', f_end_date=''):
     # 统计热点行业个股出现的个数
     df_hot_industry_count = df_hot_industry.groupby(by='industry_name',as_index=False).size()#.sort_values(ascending = False, inpalce = True)
 
-
-
     target_dict['hot industry'] = df_hot_industry
-
-
-
     df_target = pd.DataFrame()
     for key in target_dict.keys():
         if target_dict[key].empty:
@@ -1400,15 +1398,20 @@ def update_hot_industry(start_date='',end_date=''):
     df_pct_top_grp = pd.DataFrame()
     for t_name in tname_arr:
         if start_date == '':
-            sql = "SELECT dd.id , dd.date ,la.name, la.sw_level_1, sw.industry_name, dd.pct_chg FROM " + t_name + \
+            sql = "SELECT dd.id , dd.date ,la.name, la.sw_level_1, sw.industry_name as level_1_name, " \
+                  "la.sw_level_2, sw1.industry_name as level_2_name, dd.pct_chg FROM " + t_name + \
                   " as dd left join list_a as la on la.id=dd.id " \
                   " left join sw_industry_code as sw on sw.industry_code =  la.sw_level_1" \
+                  " left join sw_industry_code as sw1 on sw1.industry_code =  la.sw_level_2" \
                   " where dd.date =  " + end_date + " and dd.pct_chg > 7"
         else:
-            sql = "SELECT dd.id , dd.date ,la.name, la.sw_level_1, sw.industry_name, dd.pct_chg FROM " + t_name + \
+            sql = "SELECT dd.id , dd.date ,la.name, la.sw_level_1, sw.industry_name as level_1_name, " \
+                  "la.sw_level_2, sw1.industry_name as level_2_name, dd.pct_chg FROM " + t_name + \
                   " as dd left join list_a as la on la.id=dd.id " \
                   " left join sw_industry_code as sw on sw.industry_code =  la.sw_level_1" \
+                  " left join sw_industry_code as sw1 on sw1.industry_code =  la.sw_level_2" \
                   " where dd.date between  "+start_date+" and " + end_date + " and dd.pct_chg > 7"
+
 
         if df_pct_top_grp.empty:
             df_pct_top_grp = db._exec_sql(sql=sql)
@@ -1422,6 +1425,52 @@ def update_hot_industry(start_date='',end_date=''):
     else:
         wx.info("[update_hot_industry] {}-{} 时间段内 没有数据".format(start_date, end_date))
 
+
+"""
+# 从Start_date 到 当前日期，根据tushare的交易日历，查验数据库中是否有缺漏的交易日期数据
+"""
+@wx_timer
+def verify_trade_date(start_date=''):
+    wx = lg.get_handle()
+    ts = ts_data()
+    h_conf = conf_handler(conf='stock_analyer.conf')
+    daily_cq_t_00 = h_conf.rd_opt('db', 'daily_table_cq_00')
+    daily_cq_t_30 = h_conf.rd_opt('db', 'daily_table_cq_30')
+    daily_cq_t_60 = h_conf.rd_opt('db', 'daily_table_cq_60')
+    daily_cq_t_68 = h_conf.rd_opt('db', 'daily_table_cq_68')
+    daily_cq_t_002 = h_conf.rd_opt('db', 'daily_table_cq_002')
+
+    host = h_conf.rd_opt('db', 'host')
+    database = h_conf.rd_opt('db', 'database')
+    user = h_conf.rd_opt('db', 'user')
+    pwd = h_conf.rd_opt('db', 'pwd')
+    db = db_ops(host=host, db=database, user=user, pwd=pwd)
+
+    if start_date == '':
+        wx.info("[verify_trade_date] 起始日期为空，退出")
+        return
+
+    end_date_str = (date.today()).strftime('%Y%m%d')
+    # end_date_str = (date.today() + timedelta(days=-1)).strftime('%Y%m%d')
+    try:
+        trade_date_df = ts.acquire_trade_cal(start_date=start_date, end_date=end_date_str)
+        while trade_date_df is None:
+            wx.info("[verify_trade_date]从Tushare获取 {}:{} 交易日历数据失败, 休眠10秒后重试 ...".
+                    format(start_date, end_date_str))
+            time.sleep(10)
+            trade_date_df = ts.acquire_trade_cal(start_date=start_date, end_date=end_date_str)
+    except Exception as e:
+        wx.info("Err:[verify_trade_date]---{}".format(e))
+
+    # 从数据表中检索所有日期的记录
+    sql = "select date from "+daily_cq_t_60+" where date >= "+start_date+" group by date "
+    db_date_df = db._exec_sql(sql = sql)
+
+    # 转换成 set 类型，计算差集
+    db_date_set = set(db_date_df['date'].tolist())
+    trade_date_set = set(trade_date_df['date'].tolist())
+    diff_set = trade_date_set - db_date_set
+    print(diff_set)
 
 """
 # Logger 测试代码

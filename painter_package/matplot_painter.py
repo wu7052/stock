@@ -178,7 +178,7 @@ class mp_painter():
     # 并列柱状图 绘制
     # x_label 行业数组
     # x_sub_label 日期数组
-    def para_pillar_draw(self, x_label=None, x_sub_label = None, df=None):
+    def para_pillar_draw(self, x_label=None, x_sub_label = None, df=None, title=''):
         wx = lg.get_handle()
         if df is None or x_label is None or x_sub_label is None:
             wx.info("[mp_painter][para_pillar_draw] dataframe is Empty, return")
@@ -208,7 +208,7 @@ class mp_painter():
             plt.bar(col_pos_dict[x], df_industry.qty.tolist(), width=width, label=x, fc=color_name[icolor])
             icolor += 1
         plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
-
+        plt.title(title)
         plt.legend()
         plt.show()
 
