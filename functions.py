@@ -50,9 +50,9 @@ def update_sz_basic_info():
             json_str = sz_data.get_json_str(url=sz_basic_list_url, web_flag='sz_basic')
             pos = json_str.find('"error":null')  # 定位截取Json字符串的位置
             json_str = json_str[1:pos - 1] + '}'
-            # wx.info(json_str)
+
             sz_basic_info_df = sz_data.basic_info_json_parse(json_str)
-            wx.info("Total Page:{}---{}\n========================================"
+            wx.info("[update_sz_basic_info] Total Page:{}---{}\n========================================"
                     .format(sz_data.total_page, page_counter))
 
             sz_data.db_load_into_list_a_2(sz_basic_info_df)
@@ -184,7 +184,8 @@ def update_sh_basic_info_kc():
                      'KE': u'计算机、通信和其他电子设备制造业',
                      'KF': u'软件和信息技术服务业',
                      'KG': u'通用设备制造业',
-                     'KH' : u'医药制造业'}
+                     'KH' : u'医药制造业',
+                     'KI' : u'化学原料和化学制品制造业'}
 
     try:
         # 从Web获取沪市 所有股票的基本信息
@@ -707,12 +708,14 @@ def update_dgj_trading_data_from_eastmoney(force=False):
 
     page_counter = 1
     loop_page = True
+    icounter = 0
     while loop_page:
         dgj_eastmoney_url = "http://datainterface.eastmoney.com/EM_DataCenter/JS.aspx?type=GG&sty=GGMX&" \
                             "p=" + str(page_counter) + "&ps=100&js=var%20pfXDviDd={pages:(pc),data:[(x)]}&rt=51663059"
         dgj_str = web_data.get_json_str(url=dgj_eastmoney_url, web_flag='eastmoney')
         dgj_str = re.sub(r'.*(?={pages)', r'', dgj_str)  # 去掉 {pages 之前的字符串
 
+        # 把字符串 拆分成 total_page 数字 和 交易记录 两部分
         dgj_str = re.search(r'(?:{pages:)(\d+)(?:\D+\:\[)(.*)(?:\]\})', dgj_str)
 
         total_page = int(dgj_str.group(1))  # 获得总页数
@@ -754,6 +757,7 @@ def update_dgj_trading_data_from_eastmoney(force=False):
                                               'price', 'amount', 'pct_chg', 'trading_type', 'in_hands']]
 
             web_data.db_load_into_dgj_trade(dd_df=page_db_df)
+            icounter += len(page_db_df)
             wx.info("[update_dgj_trading_data] page {} / {}, date {} : {}".format(page_counter, total_page, trade_date,
                                                                                   start_date))
         else:
@@ -764,7 +768,7 @@ def update_dgj_trading_data_from_eastmoney(force=False):
         page_counter += 1
         if page_counter > total_page:
             loop_page = False
-
+    wx.info("[update_dgj_trading_data] 董高监交易数据更新 {} 条".format(icounter))
 
 @wx_timer
 def update_whole_sales_data_from_eastmoney(force=False):
@@ -793,6 +797,7 @@ def update_whole_sales_data_from_eastmoney(force=False):
             wx.info("[update_whole_sales_data] Checking lastest date None")
             return -1
 
+    icounter = 0
     while True:
         ws_eastmoney_url = "http://dcfm.eastmoney.com/em_mutisvcexpandinterface/api/js/get?type=DZJYXQ&" \
                            "token=70f12f2f4f091e459a279469fe49eca5&cmd=&st=TDATE&sr=-1&" \
@@ -812,12 +817,13 @@ def update_whole_sales_data_from_eastmoney(force=False):
             wx.info("[Eastmoney_ws_data]Total Page:{}---{}, Start date: {}\n========================================"
                     .format(web_data.page_count, page_counter, start_date))
             web_data.db_load_into_ws(ws_df=ws_df)
+            icounter += len(ws_df)
 
         if page_counter >= web_data.page_count:
             wx.info("Page : {} is the final page , End ".format(page_counter))
             break
         page_counter += 1
-
+    wx.info("[update_whole_sales_data] 大宗交易 导入数据记录 {} 条".format(icounter))
 
 # 分析统计WS表中所有的交易记录，更新一遍 ws_share_holder 表
 @wx_timer
@@ -1020,6 +1026,7 @@ def update_repo_data_from_eastmoney():
     wx.info("[update_repo_data] Force to refresh Repurchase data {} rows REMOVED, ".format(del_rows))
 
     loop_flag = True
+    icounter = 0
     while loop_flag:
         east_money_repo_url = "http://api.dataide.eastmoney.com/data/gethglist?pageindex=" + str(page_counter) + \
                               "&pagesize=50&orderby=upd&order=desc&jsonp_callback=var%20vehXbliK=(x)&" \
@@ -1033,12 +1040,12 @@ def update_repo_data_from_eastmoney():
                                                                                                   len(df_repo)))
 
         web_data.db_load_into_repo(df_repo=df_repo, t_name='repo_201901')
+        icounter += len(df_repo)
         page_counter += 1
         if page_counter > web_data.total_pages:
             loop_flag = False
             wx.info("[update_repo_data_from_eastmoney] Page {} is final , exit ".format(web_data.total_pages))
-    # wx.info("{}".format(repo_str))
-    # web_data.db_load_into_repo_data(df_repo= df_repo, start_date=start_date)
+    wx.info("[update_repo_data_from_eastmoney] 回购数据更新 {} 条".format(icounter))
 
 
 @wx_timer
@@ -1412,11 +1419,13 @@ def update_hot_industry(start_date='',end_date=''):
                   " left join sw_industry_code as sw1 on sw1.industry_code =  la.sw_level_2" \
                   " where dd.date between  "+start_date+" and " + end_date + " and dd.pct_chg > 7"
 
-
+        df_tmp = db._exec_sql(sql=sql)
+        if df_tmp is None or df_tmp.empty:
+            continue
         if df_pct_top_grp.empty:
-            df_pct_top_grp = db._exec_sql(sql=sql)
+            df_pct_top_grp = df_tmp.copy()
         else:
-            df_pct_top_grp = df_pct_top_grp.append(db._exec_sql(sql=sql))
+            df_pct_top_grp = df_pct_top_grp.append(df_tmp)
 
     if not df_pct_top_grp.empty or df_pct_top_grp is not None:
         df_pct_top_grp.reset_index(drop=True, inplace=True)
@@ -1471,6 +1480,103 @@ def verify_trade_date(start_date=''):
     trade_date_set = set(trade_date_df['date'].tolist())
     diff_set = trade_date_set - db_date_set
     print(diff_set)
+
+
+
+"""
+# 从东财接口 年季报表数据
+"""
+
+
+@wx_timer
+def update_fin_report_from_eastmoney(fresh=False):
+    wx = lg.get_handle()
+    web_data = ex_web_data()
+    report_date_arr = ( ('2019Q2','2019-06-30','2019二季报'),('2019Q1','2019-03-31','2019一季报'),
+                       ('2018','2018-12-31','2018年报'),('2018Q3','2018-09-30','2018三季度'),
+                       ('2018Q2','2018-06-30','2018半年报'),('2018Q1','2018-03-31','2018一季度'),
+                       ('2017','2017-12-31','2017年报'),('2017Q3', '2017-09-30', '2017三季度'),
+                       ('2017Q2', '2017-06-30', '2017半年报') #,('2017Q1', '2017-03-31', '2017一季度'),
+                       # ('2016','2016-12-31','2016年报'),('2016Q3', '2016-09-30', '2016三季度'),
+                       # ('2016Q2', '2016-06-30', '2016半年报'),('2016Q1', '2016-03-31', '2016一季度'),
+                       # ('2015','2015-12-31','2015年报'),('2015Q3', '2015-09-30', '2015三季度'),
+                       # ('2015Q2', '2015-06-30', '2015半年报'),('2015Q1', '2015-03-31', '2015一季度')
+                      )
+    try:
+        for report_date in report_date_arr:
+            page_count = 1
+            total_pages = 0
+            items_page = 300
+            df_report_record = pd.DataFrame()  # 保存期内 所有股票的 报表数据，最后一次性写入数据库
+            loop_page = True
+            while loop_page:
+                east_report_url = "http://dcfm.eastmoney.com/em_mutisvcexpandinterface/api/js/get?" \
+                                  "type=YJBB21_YJBB&token=70f12f2f4f091e459a279469fe49eca5&st=latestnoticedate&" \
+                                  "sr=-1&p="+str(page_count)+"&ps="+str(items_page)+"&js=var%20IpgmqEsv={pages:(tp),data:%20(x),font:(font)}&" \
+                                  "filter=(securitytypecode%20in%20(%27058001001%27,%27058001002%27))" \
+                                  "(reportdate=^"+report_date[1]+"^)&rt=52309816"
+
+                east_report_str = web_data.get_json_str(url=east_report_url, web_flag='eastmoney')
+
+                if east_report_str is None or len(east_report_str)<=0:
+                    wx.info("[update_fin_report_from_eastmoney] 类型：{}--- 页数{}/{} 是空的，退出".format(report_date[2], page_count,total_pages))
+                    return None
+
+                # 用替换 渠道字符串中所有空格和不显示的字符
+                east_report_str =  re.sub(r'\s+', '' , east_report_str)
+                # para_result = re.search(r'(?:\{pages\:)(\d+)', str)
+
+                # 把字符串 拆分成 总页数、报表记录、数字映射 三个部分
+                para_result = re.search(r'(?:\{pages\:)(\d+)(?:\S+\[)(.*)(?:\].*FontMapping\S+\[)(.*)(?:\])', east_report_str)
+                total_pages = int(para_result.group(1)) # 总页数
+                font_mapping = para_result.group(3)  # 数字映射
+                report_record_str =  para_result.group(2) # 报表记录
+                wx.info("[update_fin_report_from_eastmoney] {}-- page {}/ {}处理中...".format(report_date[2], page_count, total_pages))
+
+                page_count += 1
+                if page_count > total_pages:
+                    loop_page = False
+
+                # 把数字映射表，拆分成 数组形式
+                font_mapping = re.sub(r'\"code\"\:','',font_mapping) # 删除"code"
+                font_mapping = re.sub(r'\"value\"\:','',font_mapping) # 删除 "value"
+                font_mapping = re.sub(r'\"','',font_mapping) # 删除 "\""
+                font_mapping_arr = re.findall(r'(?:\{)(.*?)(?:\})', font_mapping)
+
+                # 对 report_record_str完成数字映射，解密
+                for single_mapping_str in font_mapping_arr:
+                    single_mapping_arr = single_mapping_str.split(',')
+                    report_record_str = re.sub(single_mapping_arr[0], single_mapping_arr[1], report_record_str)
+
+                # 开始处理 报表数据，处理成 Json 格式，{data:[ report_record_str ]}
+                json_report_record_str = '{"data":['+report_record_str+']}'
+                df_tmp = web_data.east_fin_report_json_parse(json_str=json_report_record_str)
+                if df_tmp is not None or not df_tmp.empty:
+                    if df_report_record.empty:
+                        df_report_record = df_tmp.copy()
+                        wx.info("[update_fin_report_from_eastmoney] 类型：{}--- 页数{}/{} 获得 {} 条报表数据".
+                                format(report_date[2], page_count-1,total_pages, len(df_report_record)))
+                    else:
+                        df_report_record = df_report_record.append(df_tmp, sort=True)
+                        wx.info("[update_fin_report_from_eastmoney] 类型：{}--- 页数{}/{} 获得 {} 条报表数据".
+                                format(report_date[2], page_count-1,total_pages, len(df_tmp)))
+
+            if not df_report_record.empty:
+                df_report_record['type'] = report_date[0]
+                wx.info("[update_fin_report_from_eastmoney] 类型：{}--- 共获得 {} 条报表数据，写入数据表".
+                        format(report_date[2], len(df_report_record)))
+                df_report_record = df_report_record[['type', 'id', 'name', 'notice_date',
+                                                     'basiceps',  'cutbasiceps',  'totaloperatereve',
+                                                     'ystz',  'yshz',   'parentnetprofit', 'sjltz',  'sjlhz',
+                                                     'roeweighted',  'bps',  'mgjyxjje', 'xsmll', 'industry_name',
+                                                     'assigndscrpt', 'gxl']]
+                df_report_record.replace('-',0,inplace = True)
+                web_data.db_load_into_fin_data(df_fin_record= df_report_record)
+
+    except Exception as e:
+        wx.info("Err [update_daily_data_from_eastmoney]:捕获异常：{}".format(e))
+
+
 
 """
 # Logger 测试代码

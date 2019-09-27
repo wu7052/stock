@@ -51,15 +51,14 @@ class ex_web_data(object):
             self.bt_dd_qfq_68 = self.h_conf.rd_opt('db', 'bt_daily_table_qfq_68')
 
             self.dd_hot_industry = self.h_conf.rd_opt('db', 'dd_hot_industry')
-            # wx.info("[OBJ] ex_web_data : __init__ called")
+            self.fin_report = self.h_conf.rd_opt('db','fin_report')
+
         except Exception as e:
             raise e
 
     def __del__(self):
-        # wx = lg.get_handle()
         self.db.cursor.close()
         self.db.handle.close()
-        # wx.info("[OBJ] ex_web_data : __del__ called")
 
     def url_encode(self, str):
         return parse.quote(str)
@@ -244,9 +243,9 @@ class ex_web_data(object):
         # requests.packages.urllib3.disable_warnings()
         http = urllib3.PoolManager()
         try:
-            wx.info(" debug start GET URL ...")
+            # wx.info(" debug start GET URL ...")
             raw_data = http.request('GET', url, headers=header)
-            wx.info(" debug get Response URL ...")
+            # wx.info(" debug get Response URL ...")
         except Exception as e:
             return None
         finally:
@@ -503,6 +502,7 @@ class ex_web_data(object):
             record_date = datetime.strptime(result[0], "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
             start_date = record_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期，格式如： 2019-01-11
             # start_date = (record_date + timedelta(days=1)).strftime('%Y-%m-%d')  # 起始日期 为记录日期+1天
+            # 从数据表中删除 最近一个日期的数据，以防数据记录不完整，要重新下载一遍
             self.whole_sales_data_remove(start_date=result[0])
             return start_date
         else:
@@ -709,22 +709,82 @@ class ex_web_data(object):
         self.db.cursor.executemany(sql, repo_arr)
         self.db.handle.commit()
 
-        """
-        sql = "select distinct b_code from ws_201901 where id = %s order by date asc"
-        self.db.cursor.execute(sql, (s_id))
-        self.db.handle.commit()
-        arr_buyer = self.db.cursor.fetchall()
-        columnDes = cursor.description  # 获取连接对象的描述信息
-        columnNames = [columnDes[i][0] for i in range(len(columnDes))]
-        df_buyer = pd.DataFrame([list(i) for i in arr_buyer], columns=columnNames)
+    def east_fin_report_json_parse(self, json_str=None):
+        if json_str is not None:
+            json_obj = json.loads(json_str)
+        if len(json_obj['data']) == 0:
+            return None
+        id = jsonpath(json_obj, '$..scode')
+        name = jsonpath(json_obj, '$..sname')
+        notice_date = jsonpath(json_obj, '$..firstnoticedate')
+        notice_date = [re.sub(r'-', '', tmp[0:10]) for tmp in notice_date]
+        basiceps = jsonpath(json_obj, '$..basiceps')
+        cutbasiceps = jsonpath(json_obj, '$..cutbasiceps')
+        totaloperatereve = jsonpath(json_obj, '$..totaloperatereve')
+        ystz = jsonpath(json_obj, '$..ystz')
+        yshz = jsonpath(json_obj, '$..yshz')
+        # vol_tf = [float(tmp) * 100 for tmp in v_t]  # 换算成百分比，交易量占流动股的百分比
+        parentnetprofit = jsonpath(json_obj, '$..parentnetprofit')
+        sjltz = jsonpath(json_obj, '$..sjltz')
+        sjlhz = jsonpath(json_obj, '$..sjlhz')
+        roeweighted = jsonpath(json_obj, '$..roeweighted')
+        bps = jsonpath(json_obj, '$..bps')
+        mgjyxjje = jsonpath(json_obj, '$..mgjyxjje')
+        xsmll = jsonpath(json_obj, '$..xsmll')
+        industry_name = jsonpath(json_obj, '$..publishname')
+        assigndscrpt = jsonpath(json_obj, '$..assigndscrpt')
+        gxl = jsonpath(json_obj, '$..gxl')
 
-        # wx.info("[whole_sales_analysis] Stock {} record {}",format(s_id, arr_buyer))
+        fin_data = [id, name, notice_date, basiceps, cutbasiceps, totaloperatereve, ystz, yshz,
+                   parentnetprofit, sjltz, sjlhz, roeweighted,
+                   bps, mgjyxjje, xsmll, industry_name, assigndscrpt, gxl]
+        df = pd.DataFrame(fin_data)
+        df1 = df.T
+        df1.rename(
+            columns={0: 'id', 1: 'name', 2:'notice_date',  3:'basiceps', 4: 'cutbasiceps', 5:  'totaloperatereve',
+                     6:'ystz', 7: 'yshz',  8: 'parentnetprofit',9: 'sjltz',  10:'sjlhz',
+                     11: 'roeweighted', 12: 'bps', 13: 'mgjyxjje', 14: 'xsmll', 15:  'industry_name',
+                     16: 'assigndscrpt', 17: 'gxl'}, inplace=True)
 
-        sql = "select distinct s_code from ws_201901 where id = %s order by date asc"
-        self.db.cursor.execute(sql, (s_id))
-        self.db.handle.commit()
-        arr_seller = self.db.cursor.fetchall()
-        # wx.info("[whole_sales_analysis] Stock {} record {}", format(s_id, arr_seller))
+        return df1
+
+    def db_load_into_fin_data(self, df_fin_record=None):
+        wx = lg.get_handle()
+        t_name = self.fin_report
+        if df_fin_record is None or df_fin_record.empty :
+            wx.info("[db_load_into_fin_data] 企业财务报表数据 DataFrame 为空")
+            return -1
+        dd_array = df_fin_record.values.tolist()
+        i = 0
+        while i < len(dd_array):
+            dd_array[i] = tuple(dd_array[i])
+            i += 1
+        sql = "REPLACE INTO " + t_name + " SET type=%s, id=%s, name=%s, notice_date=%s, basiceps=%s, " \
+                                         "cutbasiceps=%s, totaloperatereve=%s, ystz=%s, yshz=%s, parentnetprofit=%s, sjltz=%s, " \
+                                         "sjlhz=%s, roe=%s, bps=%s, mgjyxjje=%s, xsmll=%s, industry_name=%s, assigndscrpt=%s, gxl=%s"
+
+        i_scale = 1000
+        for i in range(0, len(dd_array), i_scale):
+            tmp_array = dd_array[i: i + i_scale]
+            wx.info("[db_load_into_fin_data][{}] Loaded {} ~ {} , total {} " .format(t_name, i, i + i_scale, len(dd_array)))
+            self.db.cursor.executemany(sql, tmp_array)
+            self.db.handle.commit()
+    """
+    sql = "select distinct b_code from ws_201901 where id = %s order by date asc"
+    self.db.cursor.execute(sql, (s_id))
+    self.db.handle.commit()
+    arr_buyer = self.db.cursor.fetchall()
+    columnDes = cursor.description  # 获取连接对象的描述信息
+    columnNames = [columnDes[i][0] for i in range(len(columnDes))]
+    df_buyer = pd.DataFrame([list(i) for i in arr_buyer], columns=columnNames)
+
+    # wx.info("[whole_sales_analysis] Stock {} record {}",format(s_id, arr_buyer))
+
+    sql = "select distinct s_code from ws_201901 where id = %s order by date asc"
+    self.db.cursor.execute(sql, (s_id))
+    self.db.handle.commit()
+    arr_seller = self.db.cursor.fetchall()
+    # wx.info("[whole_sales_analysis] Stock {} record {}", format(s_id, arr_seller))
 """
 
 # wx.info("[whole_sales_analysis] Stock {} record {}",format(s_id, ws_flow))

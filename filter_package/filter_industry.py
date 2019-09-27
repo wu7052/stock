@@ -168,10 +168,13 @@ class filter_industry():
             #     sql = "SELECT ma_5, ma_10, ma_20, ma_60 from "+t_name+\
             #           " where date between "+ self.f_start_date+ " and "+self.f_end_date
 
-            if df_c_grp.empty:
-                df_c_grp = self.db._exec_sql(sql=sql)
+            df_tmp = self.db._exec_sql(sql=sql)
+            if df_tmp is None:
+                continue;
+            elif df_c_grp.empty:
+                df_c_grp = df_tmp
             else:
-                df_c_grp = df_c_grp.append(self.db._exec_sql(sql=sql))
+                df_c_grp = df_c_grp.append(df_tmp)
 
         df_c_up_ma10 = pd.merge(df_grp, df_c_grp, how='inner', on=['id'])
         df_c_up_ma10 = df_c_up_ma10[(df_c_up_ma10['close'] > df_c_up_ma10['ma_10'])]
@@ -191,6 +194,7 @@ class filter_industry():
         else:
             id_arr_2_str = (",".join(df_grp.id.tolist()))
 
+        # 从 大宗交易 里面查找 该行业股票的 交易记录（duration 开始日期--今天）
         start_date_str = (date.today() + timedelta(days=duration)).strftime('%Y%m%d')
         sql = "SELECT id, date, disc, price, vol, amount, close_price, b_name, s_name from " +  self.ws_table + \
               " where date >= " + start_date_str +" and id in ("+id_arr_2_str+")"
@@ -207,9 +211,10 @@ class filter_industry():
             dict_ws_by_id['t_amount'].append(df_ws_by_id[1]['amount'].sum())
             dict_ws_by_id['t_vol'].append(df_ws_by_id[1]['vol'].sum())
 
-            df_ws_by_id[1]['amount_weight']=df_ws_by_id[1]['amount']/df_ws_by_id[1]['amount'].sum()
-            df_ws_by_id[1]['disc_weight'] = df_ws_by_id[1]['disc']* df_ws_by_id[1]['amount_weight']
-            disc = df_ws_by_id[1]['disc_weight'].sum()
+            df_tmp = df_ws_by_id[1].copy()
+            df_tmp['amount_weight']=df_tmp['amount']/df_tmp['amount'].sum()
+            df_tmp['disc_weight'] = df_tmp['disc']* df_tmp['amount_weight']
+            disc = df_tmp['disc_weight'].sum()
             dict_ws_by_id['ave_disc'].append(disc)
             dict_ws_by_id['max_disc'].append(df_ws_by_id[1]['disc'].max())
             dict_ws_by_id['min_disc'].append(df_ws_by_id[1]['disc'].min())
