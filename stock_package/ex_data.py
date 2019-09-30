@@ -612,8 +612,12 @@ class ex_web_data(object):
         self.db.handle.commit()
         return iCount
 
-    def dgj_repo_start_date(self, table_name=None):
-        sql = "select distinct date from " + table_name + " as dgj order by dgj.date desc limit 3"
+    def dgj_fin_start_date(self, table_name=None, sql=None, format=10):
+        if sql is None: # dgj 查询
+            sql = "select distinct date from " + table_name + " order by date desc limit 3"
+            dgj_flag = True
+        else: #fin_report 查询
+            dgj_flag = False
 
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
@@ -622,14 +626,18 @@ class ex_web_data(object):
             # first_date = result[0][0]
             # second_date = result[1][0]
             third_date = result[2][0]
-            # 数据保留到 third_date , 之后两天的数据都删除掉，并设置 start_date 为 third_date
-            sql = "delete from " + table_name + " where date > " + third_date
-            iCount = self.db.cursor.execute(sql)  # 返回值
-            self.db.handle.commit()
+
+            if dgj_flag:
+                # 数据保留到 third_date , 之后两天的数据都删除掉，并设置 start_date 为 third_date
+                sql = "delete from " + table_name + " where date > " + third_date
+                iCount = self.db.cursor.execute(sql)  # 返回值
+                self.db.handle.commit()
 
             start_date = datetime.strptime(third_date, "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
-            start_date = start_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期，
-
+            if format == 10:
+                start_date = start_date.strftime('%Y-%m-%d')  # 起始日期 为记录日期，
+            else:
+                start_date = start_date.strftime('%Y%m%d')  # 起始日期 为记录日期，
             return start_date
         else:
             return None
@@ -716,7 +724,7 @@ class ex_web_data(object):
             return None
         id = jsonpath(json_obj, '$..scode')
         name = jsonpath(json_obj, '$..sname')
-        notice_date = jsonpath(json_obj, '$..firstnoticedate')
+        notice_date = jsonpath(json_obj, '$..latestnoticedate')
         notice_date = [re.sub(r'-', '', tmp[0:10]) for tmp in notice_date]
         basiceps = jsonpath(json_obj, '$..basiceps')
         cutbasiceps = jsonpath(json_obj, '$..cutbasiceps')
@@ -769,6 +777,9 @@ class ex_web_data(object):
             wx.info("[db_load_into_fin_data][{}] Loaded {} ~ {} , total {} " .format(t_name, i, i + i_scale, len(dd_array)))
             self.db.cursor.executemany(sql, tmp_array)
             self.db.handle.commit()
+
+
+
     """
     sql = "select distinct b_code from ws_201901 where id = %s order by date asc"
     self.db.cursor.execute(sql, (s_id))

@@ -29,8 +29,8 @@ from functions import *
 # update_sh_basic_info_kc()
 # wx.info("============================[update_sz_basic_info]深证主板、中小板、创业板基础信息更新==========================================")
 # update_sz_basic_info()
-wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
-update_sw_industry_into_basic_info()
+# wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
+# update_sw_industry_into_basic_info()
 
 
 """####################################################################

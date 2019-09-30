@@ -697,7 +697,7 @@ def update_dgj_trading_data_from_eastmoney(force=False):
         wx.info("[update_dgj_trading_data] {} Rows of Expired data Removed ".format(del_rows))
 
         # 删除最近一天的数据,因为最近一天的数据可能还有新增，把开始时间设为 前一天
-        start_date = web_data.dgj_repo_start_date(table_name='dgj_201901')
+        start_date = web_data.dgj_fin_start_date(table_name='dgj_201901')
         if start_date is None:
             wx.info("[update_dgj_trading_data] Checking lastest date is None !!!")
             return -1
@@ -1029,7 +1029,7 @@ def update_repo_data_from_eastmoney():
     icounter = 0
     while loop_flag:
         east_money_repo_url = "http://api.dataide.eastmoney.com/data/gethglist?pageindex=" + str(page_counter) + \
-                              "&pagesize=50&orderby=upd&order=desc&jsonp_callback=var%20vehXbliK=(x)&" \
+                              "&pagesize=200&orderby=upd&order=desc&jsonp_callback=var%20vehXbliK=(x)&" \
                               "market=(0,1,2,3)&rt=51676827"
         repo_str = web_data.get_json_str(url=east_money_repo_url, web_flag='eastmoney')
         trunc_pos = repo_str.find('{"code":')
@@ -1484,26 +1484,38 @@ def verify_trade_date(start_date=''):
 
 
 """
-# 从东财接口 年季报表数据
+# 从东财接口 年季报表数据，东财数据更新不及时，无法增量更新（根据公告日期排序筛选）
+# update = 'current' / 'all' 分别代表 只更新最新季度的报表，或所有 report_date_arr 数组中的季度报表 
+# supplement = True / False 分别代表 按最终报告日期 进行增量更新 ，或刷新当前季度的所有报表
 """
 
 
 @wx_timer
-def update_fin_report_from_eastmoney(fresh=False):
+def update_fin_report_from_eastmoney(update='current', supplement = True):
     wx = lg.get_handle()
     web_data = ex_web_data()
-    report_date_arr = ( ('2019Q2','2019-06-30','2019二季报'),('2019Q1','2019-03-31','2019一季报'),
-                       ('2018','2018-12-31','2018年报'),('2018Q3','2018-09-30','2018三季度'),
-                       ('2018Q2','2018-06-30','2018半年报'),('2018Q1','2018-03-31','2018一季度'),
-                       ('2017','2017-12-31','2017年报'),('2017Q3', '2017-09-30', '2017三季度'),
-                       ('2017Q2', '2017-06-30', '2017半年报') #,('2017Q1', '2017-03-31', '2017一季度'),
+    report_date_arr = ( ('2019Q3','2019-09-30','2019三季度') ,('2019Q2','2019-06-30','2019半年报') ,
+                        ('2019Q1','2019-03-31','2019一季报')
+                       # ,('2018','2018-12-31','2018年报'),('2018Q3','2018-09-30','2018三季度'),
+                       # ('2018Q2','2018-06-30','2018半年报'),('2018Q1','2018-03-31','2018一季度'),
+                       # ('2017','2017-12-31','2017年报'),('2017Q3', '2017-09-30', '2017三季度'),
+                       # ('2017Q2', '2017-06-30', '2017半年报') #,('2017Q1', '2017-03-31', '2017一季度'),
                        # ('2016','2016-12-31','2016年报'),('2016Q3', '2016-09-30', '2016三季度'),
                        # ('2016Q2', '2016-06-30', '2016半年报'),('2016Q1', '2016-03-31', '2016一季度'),
                        # ('2015','2015-12-31','2015年报'),('2015Q3', '2015-09-30', '2015三季度'),
                        # ('2015Q2', '2015-06-30', '2015半年报'),('2015Q1', '2015-03-31', '2015一季度')
                       )
     try:
-        for report_date in report_date_arr:
+
+        for icounter , report_date in enumerate(report_date_arr):
+            # 只更新当季的数据
+            if update == 'current' and icounter > 0:
+                break
+
+            # 只做增量更新
+            if supplement:
+                sql = 'select distinct notice_date from fin_report where type = "%s" order by notice_date desc limit 3'%(report_date[0])
+                start_date_str = web_data.dgj_fin_start_date(sql=sql, format=8)
             page_count = 1
             total_pages = 0
             items_page = 300
@@ -1533,10 +1545,6 @@ def update_fin_report_from_eastmoney(fresh=False):
                 report_record_str =  para_result.group(2) # 报表记录
                 wx.info("[update_fin_report_from_eastmoney] {}-- page {}/ {}处理中...".format(report_date[2], page_count, total_pages))
 
-                page_count += 1
-                if page_count > total_pages:
-                    loop_page = False
-
                 # 把数字映射表，拆分成 数组形式
                 font_mapping = re.sub(r'\"code\"\:','',font_mapping) # 删除"code"
                 font_mapping = re.sub(r'\"value\"\:','',font_mapping) # 删除 "value"
@@ -1551,15 +1559,31 @@ def update_fin_report_from_eastmoney(fresh=False):
                 # 开始处理 报表数据，处理成 Json 格式，{data:[ report_record_str ]}
                 json_report_record_str = '{"data":['+report_record_str+']}'
                 df_tmp = web_data.east_fin_report_json_parse(json_str=json_report_record_str)
+
                 if df_tmp is not None or not df_tmp.empty:
+                    # 增量更新
+                    if supplement:
+                    #   发现 数据库已存在的start_date_str 在 DataFrame 中，表示数据出现重复，可以截断DataFrame，并停止下载下一页数据
+                        if start_date_str in df_tmp["notice_date"].tolist():
+                            df_tmp = df_tmp.loc[df_tmp["notice_date"] > start_date_str].copy()
+                            wx.info("第 {} 页 {} 条新数据，加入更新DataFrame·".format(page_count, len(df_tmp)))
+                            loop_page = False
+                        else:
+                            wx.info("第 {} 页全部都是新数据，加入更新DataFrame·".format(page_count))
+
+                    # 从 df_tmp 进入 df_report_record
                     if df_report_record.empty:
                         df_report_record = df_tmp.copy()
                         wx.info("[update_fin_report_from_eastmoney] 类型：{}--- 页数{}/{} 获得 {} 条报表数据".
-                                format(report_date[2], page_count-1,total_pages, len(df_report_record)))
+                                format(report_date[2], page_count,total_pages, len(df_report_record)))
                     else:
                         df_report_record = df_report_record.append(df_tmp, sort=True)
                         wx.info("[update_fin_report_from_eastmoney] 类型：{}--- 页数{}/{} 获得 {} 条报表数据".
-                                format(report_date[2], page_count-1,total_pages, len(df_tmp)))
+                                format(report_date[2], page_count,total_pages, len(df_tmp)))
+
+                page_count += 1
+                if page_count > total_pages:
+                    loop_page = False
 
             if not df_report_record.empty:
                 df_report_record['type'] = report_date[0]

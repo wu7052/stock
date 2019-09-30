@@ -65,6 +65,8 @@ class filter_industry():
             self.ma_bt_qfq_table_68 = self.h_conf.rd_opt('db','ma_bt_qfq_table_30')
             self.ma_bt_qfq_table_002 = self.h_conf.rd_opt('db','ma_bt_qfq_table_30')
 
+            self.fin_table = self.h_conf.rd_opt('db','fin_report')
+
             host = self.h_conf.rd_opt('db', 'host')
             database = self.h_conf.rd_opt('db', 'database')
             user = self.h_conf.rd_opt('db', 'user')
@@ -187,6 +189,10 @@ class filter_industry():
     #     print(df)
     #     pass
 
+
+    """
+    函数说明：从大宗交易中查找并计算 交易金额、数量、平均折扣、最大、最小折扣，默认180天历史记录
+    """
     def filter_ws_record(self, df_grp=None, duration=-180):
         wx = lg.get_handle()
         if df_grp is None or df_grp.empty:
@@ -222,3 +228,40 @@ class filter_industry():
         df_ws_by_id = pd.DataFrame(dict_ws_by_id)
 
         return df_ws_by_id
+
+
+    def filter_fin_roe_top(self):
+        wx = lg.get_handle()
+        industry_id_arr_2_str = (",".join(self.industry_id_arr))
+
+        # 获得最近两个年报的 Type 值
+        sql = "select distinct type from "+self.fin_table+" where type like \'%s\' order by type desc limit 2"%('%Q4')
+        df_fin_year_report = self.db._exec_sql(sql=sql)
+        fin_year_report_type_arr = df_fin_year_report.type.tolist()
+        fin_year_report_type_str =  ("','".join(fin_year_report_type_arr))
+        fin_year_report_type_str = "'"+fin_year_report_type_str+"'"
+        # 获得最近两个季报的 Type 值
+        sql = "select distinct type from "+self.fin_table+"  where type not like \'%s\'order by type desc limit 2"%('%Q4')
+        df_fin_q_report = self.db._exec_sql(sql=sql)
+        fin_q_report_type_arr = df_fin_q_report.type.tolist()
+        fin_q_report_type_str =  ("','".join(fin_q_report_type_arr))
+        fin_q_report_type_str = "'"+fin_q_report_type_str+"'"
+
+        # 获得年报的Roe
+        sql = "select type, id , roe from "+self.fin_table+" where type in ("+ fin_year_report_type_str+") and id in ("+industry_id_arr_2_str+")"
+        df_roe_year = self.db._exec_sql(sql=sql)
+
+        # 获得季报的Roe
+        sql = "select type, id , roe from "+self.fin_table+" where type in ("+ fin_q_report_type_str+") and id in ("+industry_id_arr_2_str+")"
+        df_roe_quar = self.db._exec_sql(sql=sql)
+
+        if df_roe_quar is not None and not df_roe_quar.empty:
+            df_roe = df_roe_quar;
+            if df_roe_year is not None and not df_roe_year.empty:
+                df_roe = df_roe.append(df_roe_year)
+
+        roe_ave = df_roe['roe'].groupby(df_roe['id']).sum()/df_roe['roe'].groupby(df_roe['id']).count()
+        df_roe_ave = pd.DataFrame(roe_ave).reset_index()
+        df_roe_ave.sort_values(by=['roe'], ascending=False, inplace=True)
+
+        return df_roe_ave
