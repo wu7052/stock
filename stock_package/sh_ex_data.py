@@ -28,10 +28,17 @@ class sh_web_data(ex_web_data):
 
         for key in industry_dict.keys():
             # sh_data.logger.wt.info("key:{}==> industry:{}".format(key, industry_dict[key]))
-            sh_industry_list_url = 'http://query.sse.com.cn/security/stock/queryIndustryIndex.do?&' \
-                                   'jsonCallBack=jsonpCallback61167&isPagination=false&' \
-                                   'csrcName=' + self.url_encode(industry_dict[key]) + \
-                                   '&csrcCode=' + key + '&_=1545309860667'
+            sh_industry_list_url = 'http://query.sse.com.cn/security/stock/getStockListData.do?&' \
+                                   'jsonCallBack=jsonpCallback61935&isPagination=true&stockCode=&' \
+                                   'csrcCode='+ key +'&areaName=&stockType=1&pageHelp.cacheSize=1&' \
+                                                     'pageHelp.beginPage=1&pageHelp.pageSize=50&' \
+                                                     'pageHelp.pageNo=1&_=1555658239650'
+
+            # sh_industry_list_url = 'http://query.sse.com.cn/security/stock/queryIndustryIndex.do?&' \
+            #                        'jsonCallBack=jsonpCallback61167&isPagination=false&' \
+            #                        'csrcName=' + self.url_encode(industry_dict[key]) + \
+            #                        '&csrcCode=' + key + '&_=1545309860667'
+
             json_str = self.get_json_str(url=sh_industry_list_url, web_flag='sh_basic' )
             cur_df = self.industry_info_json_parse(json_str[19:-1])
             cur_df['industry'] = industry_dict[key]
@@ -47,8 +54,8 @@ class sh_web_data(ex_web_data):
         # self.logger.wt.info("start to parse INDUSTRY INFO ...\n")
         if json_str is not None:
             json_obj = json.loads(json_str)
-            company_code = jsonpath(json_obj, '$..result..companycode')  # 公司/A股代码
-            company_fname = jsonpath(json_obj, '$..result..fullname')  # 公司全名
+            company_code = jsonpath(json_obj, '$..result..COMPANY_CODE')  # 公司/A股代码
+            company_fname = jsonpath(json_obj, '$..result..COMPANY_ABBR')  # 公司全名
             industry_matix = [company_code, company_fname]
             df = pd.DataFrame(industry_matix)
             df1 = df.T
@@ -66,29 +73,21 @@ class sh_web_data(ex_web_data):
             json_obj = json.loads(json_str)
             company_code = jsonpath(json_obj, '$..pageHelp..COMPANY_CODE')  # 公司/A股代码
             company_abbr = jsonpath(json_obj, '$..pageHelp..COMPANY_ABBR')  # 公司/A股简称
-            total_shares = jsonpath(json_obj, "$..pageHelp..totalShares")  # A股总资本
-            total_flow_shares = jsonpath(json_obj, '$..pageHelp..totalFlowShares')  # A股流动资本
+            # 网站已更新，这两项数据为空
+            # 为保持数据一致，在后面用 reindex设置为0
+            # total_shares = jsonpath(json_obj, "$..pageHelp..totalShares")  # A股总资本
+            # total_flow_shares = jsonpath(json_obj, '$..pageHelp..totalFlowShares')  # A股流动资本
             list_date = jsonpath(json_obj, '$..pageHelp..LISTING_DATE')  # A股上市日期
+            full_name = jsonpath(json_obj, '$..pageHelp..SECURITY_ABBR_A') # 全名
             total_page = jsonpath(json_obj, '$..pageHelp.pageCount')
             self.total_page = total_page
-            """
-            df = pd.DataFrame(company_code,
-                              index=range(1, len(company_code) + 1),
-                              columns=['A股代码'])
 
-            df['A股简称'] = pd.Series(company_abbr, index=df.index)
-            df['A股总资本'] = pd.Series(totalShares, index=df.index)
-            df['A股流动资本'] = pd.Series(totalFlowShares, index=df.index)
-            """
-
-            stock_matix = [company_code, company_abbr, total_shares, total_flow_shares, list_date]
+            stock_matix = [company_code, company_abbr, list_date, full_name]
             df = pd.DataFrame(stock_matix)
             df1 = df.T
-            df1.rename(columns={0: 'ID', 1: 'Name', 2: 'Total Shares', 3: 'Flow Shares', 4: 'List_Date'}, inplace=True)
-            # df1.sort_values(by=['Total Shares'], inplace=True)
-            # print(df1.describe())
-            # print(df1)
+            df1.rename(columns={0: 'ID', 1: 'Name', 2: 'List_Date', 3: 'Full_Name'}, inplace=True)
+            df1 = df1.reindex(columns=['ID','Name','total_shares','total_flow_shares','List_Date','Full_Name'],fill_value=0 )
+
             return df1
         else:
-            # self.logger.wt.info("json string is Null , exit ...\n")
             return None
