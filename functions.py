@@ -247,10 +247,12 @@ def update_sw_industry_code():
 
 
 @wx_timer
-def update_sw_industry_into_basic_info():
+def update_sw_industry_into_basic_info(start_from = None):
     wx = lg.get_handle()
     web_data = ex_web_data()
     sw_industry_arr = web_data.db_get_sw_industry_code(level=2)
+    if start_from is not None:
+        sw_industry_arr = sw_industry_arr[start_from-1:]
     code_counter = 1
     for code in sw_industry_arr:
         page_counter = 1

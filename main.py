@@ -30,7 +30,7 @@ from functions import *
 # wx.info("============================[update_sz_basic_info]深证主板、中小板、创业板基础信息更新==========================================")
 # update_sz_basic_info()
 # wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
-# update_sw_industry_into_basic_info()
+# update_sw_industry_into_basic_info(start_from=99)
 
 
 """####################################################################
@@ -112,6 +112,8 @@ update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
 update_hot_industry(start_date='',end_date='')
 # analysis_hot_industry(duration = 5, level=1)
 analysis_hot_industry(duration = 5, level=2)
+
+
 """
 #  根据规则筛选股票，PE、收盘价、流通金额、Ma55、高点左右侧得分、黄金比例、
 #  f_date='' 默认时间是最近交易日，或指定回测日期
@@ -135,7 +137,7 @@ analysis_hot_industry(duration = 5, level=2)
 
 
 """####################################################################
-# 从sina获得实时的交易数据
+# 从sina获得交易数据
 # 不指定日期，默认是当天
 # 指定日期，sina 的交易数据更新到 指定日期
 """

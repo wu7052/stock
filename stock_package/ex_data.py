@@ -93,7 +93,7 @@ class ex_web_data(object):
     def db_get_sw_industry_code(self, level=2):
         wx = lg.get_handle()
         # 取第二级行业代码
-        sql = "select industry_code from sw_industry_code where level = " + str(level)
+        sql = "select industry_code from sw_industry_code where level = " + str(level) +" order by industry_code "
         iCount = self.db.cursor.execute(sql)
         if iCount > 0:
             industry_code_arr = self.db.cursor.fetchall()
