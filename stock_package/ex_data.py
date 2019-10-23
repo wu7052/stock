@@ -625,7 +625,7 @@ class ex_web_data(object):
             result = self.db.cursor.fetchall()
             # first_date = result[0][0]
             # second_date = result[1][0]
-            third_date = result[2][0]
+            third_date = result[-1][0]
 
             if dgj_flag:
                 # 数据保留到 third_date , 之后两天的数据都删除掉，并设置 start_date 为 third_date

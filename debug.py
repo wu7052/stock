@@ -17,21 +17,13 @@ from filter_package import filter_fix, filter_industry
 from assess_package import back_trader
 from functions import *
 
-wx.info("============================[update_last_day_qfq_data_from_ts]更新个股前复权数据==========================================")
-qfq_id_arr = update_last_day_qfq_data_from_ts()
-wx.info("============================[update_ind_ma_single]当日个股前复权数据指标（个股全部更新）==========================================")
-update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
-
-
-"""
-# 最近五个交易日的 热点板块的统计图
-# X坐标日期、板块名，各板块的个股数量
-"""
-update_hot_industry(start_date='',end_date='')
-# analysis_hot_industry(duration = 5, level=1)
-analysis_hot_industry(duration = 5, level=2)
+# update_fin_report_from_eastmoney(update='all', supplement = True)
 # update_hot_industry(start_date='',end_date='')
+# analysis_hot_industry(duration = 5, level=1)
 # analysis_hot_industry(duration = 5, level=2)
+wx.info("============================[update_fin_report_from_eastmoney]公司财报数据=====================================")
+update_fin_report_from_eastmoney(update='all', supplement = True)
+
 
 # update_fin_report_from_eastmoney(update='current', supplement = True)
 
