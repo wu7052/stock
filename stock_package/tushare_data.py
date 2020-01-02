@@ -79,7 +79,7 @@ class ts_data:
         wx.info("tushare called {} times，id: {}".format(ts_data.__counter, code))
         if (ts_data.__counter == 1):  # 第一次调用，会重置 计时器
             ts_data.__timer = time.time()
-        if (ts_data.__counter >= 200): # 达到 200 次调用，需要判断与第一次调用的时间间隔
+        if (ts_data.__counter >= 199): # 达到 200 次调用，需要判断与第一次调用的时间间隔
             ts_data.__counter = 0      # 重置计数器=0，下面立即调用一次 计数器+1
             wait_sec = 60 - (int)(time.time() - ts_data.__timer) # 计算时间差
             # ts_data.__timer = time.time() # 重置计时器

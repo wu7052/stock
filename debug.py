@@ -17,12 +17,28 @@ from filter_package import filter_fix, filter_industry
 from assess_package import back_trader
 from functions import *
 
+update_hot_industry(start_date='20191201',end_date='20191226')
+
+
+
+
+"""
+# 更新上市公司的财务报表
+# update='all'/ 'current' 分别代表更新 所有季度的报表 、当前季度的报表
+# supplement = True / False 代表增量更新 、全部刷新
+"""
+# wx.info("============================[update_fin_report_from_eastmoney]公司财报数据=====================================")
 # update_fin_report_from_eastmoney(update='all', supplement = True)
+
+
+
+"""
+# 最近五个交易日的 热点板块的统计图
+# X坐标日期、板块名，各板块的个股数量
+"""
 # update_hot_industry(start_date='',end_date='')
 # analysis_hot_industry(duration = 5, level=1)
 # analysis_hot_industry(duration = 5, level=2)
-wx.info("============================[update_fin_report_from_eastmoney]公司财报数据=====================================")
-update_fin_report_from_eastmoney(update='all', supplement = True)
 
 
 # update_fin_report_from_eastmoney(update='current', supplement = True)

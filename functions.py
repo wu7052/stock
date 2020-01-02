@@ -179,15 +179,13 @@ def update_sh_basic_info_2():
 def update_sh_basic_info_kc():
     wx = lg.get_handle()
     sh_data = sh_web_data()
-    industry_dict = {'KA': u'铁路、船舶、航空航天和其他运输设备制造业',
-                     'KB': u'专用设备制造业',
-                     'KC': u'仪器仪表制造业',
-                     'KD': u'有色金属冶炼和压延加工业',
-                     'KE': u'计算机、通信和其他电子设备制造业',
-                     'KF': u'软件和信息技术服务业',
-                     'KG': u'通用设备制造业',
-                     'KH' : u'医药制造业',
-                     'KI' : u'化学原料和化学制品制造业'}
+    industry_dict = {'KA': u'新能源',
+                     'KB': u'新一代信息技术',
+                     'KC': u'其他',
+                     'KD': u'生物医药',
+                     'KE': u'新材料',
+                     'KF': u'高端装备',
+                     'KG': u'高端装备'}
 
     try:
         # 从Web获取沪市 所有股票的基本信息
@@ -1418,14 +1416,14 @@ def update_hot_industry(start_date='',end_date=''):
                   " as dd left join list_a as la on la.id=dd.id " \
                   " left join sw_industry_code as sw on sw.industry_code =  la.sw_level_1" \
                   " left join sw_industry_code as sw1 on sw1.industry_code =  la.sw_level_2" \
-                  " where dd.date =  " + end_date + " and dd.pct_chg > 7"
+                  " where dd.date =  " + end_date + " and dd.pct_chg >= 6"
         else:
             sql = "SELECT dd.id , dd.date ,la.name, la.sw_level_1, sw.industry_name as level_1_name, " \
                   "la.sw_level_2, sw1.industry_name as level_2_name, dd.pct_chg FROM " + t_name + \
                   " as dd left join list_a as la on la.id=dd.id " \
                   " left join sw_industry_code as sw on sw.industry_code =  la.sw_level_1" \
                   " left join sw_industry_code as sw1 on sw1.industry_code =  la.sw_level_2" \
-                  " where dd.date between  "+start_date+" and " + end_date + " and dd.pct_chg > 7"
+                  " where dd.date between  "+start_date+" and " + end_date + " and dd.pct_chg >=6 "
 
         df_tmp = db._exec_sql(sql=sql)
         if df_tmp is None or df_tmp.empty:
