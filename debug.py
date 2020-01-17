@@ -17,7 +17,9 @@ from filter_package import filter_fix, filter_industry
 from assess_package import back_trader
 from functions import *
 
-update_hot_industry(start_date='20191201',end_date='20191226')
+# update_hot_industry(start_date='20191201',end_date='20191226')
+wx.info("============================[update_fin_report_from_eastmoney]公司财报数据=====================================")
+update_fin_report_from_eastmoney(update='current', supplement = False)
 
 
 
