@@ -51,7 +51,7 @@ pywin32-ctypes==0.2.0
 pyzmq==17.1.2
 query-string==1.0.2
 queuelib==1.5.0
-requests==2.19.1
+requests==2.20.0
 schedule==0.6.0
 scikit-image==0.16.2
 scikit-learn==0.22
