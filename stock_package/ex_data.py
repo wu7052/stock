@@ -642,8 +642,8 @@ class ex_web_data(object):
             elif src == 'zhiya':
                 # 数据保留到 third_date , 之后两天的数据都删除掉，并设置 start_date 为 third_date
                 sql = "delete from " + table_name + " where notice_date > " + third_date
-                # iCount = self.db.cursor.execute(sql)  # 返回值
-                # self.db.handle.commit()
+                iCount = self.db.cursor.execute(sql)  # 返回值
+                self.db.handle.commit()
 
             start_date = datetime.strptime(third_date, "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
             if format == 10:
