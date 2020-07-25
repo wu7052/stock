@@ -9,6 +9,8 @@ from conf import conf_handler
 from filter_package import filter_fix, filter_curve
 from report_package import ws_rp
 from db_package import db_ops
+from itertools import chain
+
 
 # 计时器 装饰器
 def wx_timer(func):
@@ -177,15 +179,13 @@ def update_sh_basic_info_2():
 def update_sh_basic_info_kc():
     wx = lg.get_handle()
     sh_data = sh_web_data()
-    industry_dict = {'KA': u'铁路、船舶、航空航天和其他运输设备制造业',
-                     'KB': u'专用设备制造业',
-                     'KC': u'仪器仪表制造业',
-                     'KD': u'有色金属冶炼和压延加工业',
-                     'KE': u'计算机、通信和其他电子设备制造业',
-                     'KF': u'软件和信息技术服务业',
-                     'KG': u'通用设备制造业',
-                     'KH' : u'医药制造业',
-                     'KI' : u'化学原料和化学制品制造业'}
+    industry_dict = {'KA': u'新能源',
+                     'KB': u'新一代信息技术',
+                     'KC': u'其他',
+                     'KD': u'生物医药',
+                     'KE': u'新材料',
+                     'KF': u'高端装备',
+                     'KG': u'高端装备'}
 
     try:
         # 从Web获取沪市 所有股票的基本信息
@@ -247,10 +247,16 @@ def update_sw_industry_code():
 
 
 @wx_timer
-def update_sw_industry_into_basic_info():
+def update_sw_industry_into_basic_info(start_from = None, start_code = None):
     wx = lg.get_handle()
     web_data = ex_web_data()
-    sw_industry_arr = web_data.db_get_sw_industry_code(level=2)
+    sw_industry_tuple = web_data.db_get_sw_industry_code(level=2)
+    sw_industry_arr = list(chain.from_iterable(sw_industry_tuple))
+
+    if start_code is not None and start_code in sw_industry_arr:
+        start_from = sw_industry_arr.index(start_code)
+    if start_from is not None:
+        sw_industry_arr = sw_industry_arr[start_from-1:]
     code_counter = 1
     for code in sw_industry_arr:
         page_counter = 1
@@ -258,33 +264,33 @@ def update_sw_industry_into_basic_info():
             sina_industry_url = "http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/" \
                                 "Market_Center.getHQNodeData?page=" + str(page_counter) + "&num=80&sort=symbol&asc=1&" \
                                                                                           "node=sw2_" + str(
-                code[0]) + "&symbol=&_s_r_a=setlen"
-            wx.info("====== SW Industry query Code : {} , Page : {}====".format(code[0], page_counter))
+                code) + "&symbol=&_s_r_a=setlen"
+            wx.info("====== SW Industry query Code : {} , Page : {}====".format(code, page_counter))
             stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
             time.sleep(1)
 
             while stock_id_json is None:
-                wx.info("SW Industry {}:{}  Code:{} Failed to access --> [{}], retry after 3 seconds".
-                        format(code_counter, len(sw_industry_arr), code[0], sina_industry_url))
+                wx.info("SW Industry [{}:{}]  Code:{} Failed to access --> [{}], retry after 3 seconds".
+                        format(code_counter, len(sw_industry_arr), code, sina_industry_url))
                 time.sleep(10)
                 stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
 
             if stock_id_json == 'null':
                 # wx.info("SW Industry {}:{}  Code:{} Failed to access --> [{}], retry after 3 seconds".
-                #         format(code_counter, len(sw_industry_arr), code[0], sina_industry_url))
+                #         format(code_counter, len(sw_industry_arr), code, sina_industry_url))
                 # time.sleep(10)
                 # stock_id_json = web_data.get_json_str(url=sina_industry_url, web_flag='sh_basic')
-                wx.info("SW Industry {}:{} Code:{} Page {} Empty, Move to Next Code ".
-                        format(code_counter, len(sw_industry_arr), code[0],page_counter))
+                wx.info("SW Industry [{}:{}] Code:{} Page {} Empty, Move to Next Code ".
+                        format(code_counter, len(sw_industry_arr), code,page_counter))
                 break
             else:
-                wx.info("SW Industry {}:{}  Code:{}  Page:{} loaded into basic info table".
-                        format(code_counter, len(sw_industry_arr), code[0], page_counter))
+                wx.info("SW Industry [{}:{}]  Code:{}  Page:{} loaded into basic info table".
+                        format(code_counter, len(sw_industry_arr), code, page_counter))
 
             # key字段 加引号，整理字符串
             stock_id_json = re.sub(r'([a-z|A-Z]+)(?=:)', r'"\1"', stock_id_json)
             stock_id_arr = web_data.sina_industry_json_parse(stock_id_json)
-            web_data.db_update_sw_industry_into_basic_info(code=code[0], id_arr=stock_id_arr)
+            web_data.db_update_sw_industry_into_basic_info(code=code, id_arr=stock_id_arr)
             page_counter += 1
         code_counter += 1
 
@@ -1410,14 +1416,14 @@ def update_hot_industry(start_date='',end_date=''):
                   " as dd left join list_a as la on la.id=dd.id " \
                   " left join sw_industry_code as sw on sw.industry_code =  la.sw_level_1" \
                   " left join sw_industry_code as sw1 on sw1.industry_code =  la.sw_level_2" \
-                  " where dd.date =  " + end_date + " and dd.pct_chg > 7"
+                  " where dd.date =  " + end_date + " and dd.pct_chg >= 6"
         else:
             sql = "SELECT dd.id , dd.date ,la.name, la.sw_level_1, sw.industry_name as level_1_name, " \
                   "la.sw_level_2, sw1.industry_name as level_2_name, dd.pct_chg FROM " + t_name + \
                   " as dd left join list_a as la on la.id=dd.id " \
                   " left join sw_industry_code as sw on sw.industry_code =  la.sw_level_1" \
                   " left join sw_industry_code as sw1 on sw1.industry_code =  la.sw_level_2" \
-                  " where dd.date between  "+start_date+" and " + end_date + " and dd.pct_chg > 7"
+                  " where dd.date between  "+start_date+" and " + end_date + " and dd.pct_chg >=6 "
 
         df_tmp = db._exec_sql(sql=sql)
         if df_tmp is None or df_tmp.empty:
@@ -1494,8 +1500,9 @@ def verify_trade_date(start_date=''):
 def update_fin_report_from_eastmoney(update='current', supplement = True):
     wx = lg.get_handle()
     web_data = ex_web_data()
-    report_date_arr = ( ('2019Q3','2019-09-30','2019三季度') ,('2019Q2','2019-06-30','2019半年报') ,
-                        ('2019Q1','2019-03-31','2019一季报')
+    report_date_arr = ( ('2019Q4','2019-12-31','2019四季度')
+                        ,('2019Q3','2019-09-30','2019三季度') ,
+                        ('2019Q2','2019-06-30','2019半年报'), ('2019Q1','2019-03-31','2019一季报')
                        # ,('2018','2018-12-31','2018年报'),('2018Q3','2018-09-30','2018三季度'),
                        # ('2018Q2','2018-06-30','2018半年报'),('2018Q1','2018-03-31','2018一季度'),
                        # ('2017','2017-12-31','2017年报'),('2017Q3', '2017-09-30', '2017三季度'),
@@ -1516,6 +1523,11 @@ def update_fin_report_from_eastmoney(update='current', supplement = True):
             if supplement:
                 sql = 'select distinct notice_date from fin_report where type = "%s" order by notice_date desc limit 3'%(report_date[0])
                 start_date_str = web_data.dgj_fin_start_date(sql=sql, format=8)
+                if start_date_str is None:
+                    # supplement = False
+                    start_date_str = report_date[1]
+                    start_date_str = re.sub(r'\-','',start_date_str)
+                    wx.info("[update_fin_report_from_eastmoney] {} 财报在数据库无记录，起始日期设置为 {}".format(report_date[0], report_date[1]))
             page_count = 1
             total_pages = 0
             items_page = 300
@@ -1531,8 +1543,8 @@ def update_fin_report_from_eastmoney(update='current', supplement = True):
                 east_report_str = web_data.get_json_str(url=east_report_url, web_flag='eastmoney')
 
                 if east_report_str is None or len(east_report_str)<=0:
-                    wx.info("[update_fin_report_from_eastmoney] 类型：{}--- 页数{}/{} 是空的，退出".format(report_date[2], page_count,total_pages))
-                    return None
+                    wx.info("[update_fin_report_from_eastmoney] 类型：{}--- URL读取为空，即将开始获取下一季财报".format(report_date[2]))
+                    break
 
                 # 用替换 渠道字符串中所有空格和不显示的字符
                 east_report_str =  re.sub(r'\s+', '' , east_report_str)
@@ -1540,6 +1552,10 @@ def update_fin_report_from_eastmoney(update='current', supplement = True):
 
                 # 把字符串 拆分成 总页数、报表记录、数字映射 三个部分
                 para_result = re.search(r'(?:\{pages\:)(\d+)(?:\S+\[)(.*)(?:\].*FontMapping\S+\[)(.*)(?:\])', east_report_str)
+                if para_result is None:
+                    wx.info("[update_fin_report_from_eastmoney] 类型：{}--- URL内容解析为空，即将开始获取下一季财报".format(report_date[2]))
+                    break
+
                 total_pages = int(para_result.group(1)) # 总页数
                 font_mapping = para_result.group(3)  # 数字映射
                 report_record_str =  para_result.group(2) # 报表记录
@@ -1565,7 +1581,7 @@ def update_fin_report_from_eastmoney(update='current', supplement = True):
                     if supplement:
                     #   发现 数据库已存在的start_date_str 在 DataFrame 中，表示数据出现重复，可以截断DataFrame，并停止下载下一页数据
                         if start_date_str in df_tmp["notice_date"].tolist():
-                            df_tmp = df_tmp.loc[df_tmp["notice_date"] > start_date_str].copy()
+                            df_tmp = df_tmp.loc[df_tmp["notice_date"] >= start_date_str].copy()
                             wx.info("第 {} 页 {} 条新数据，加入更新DataFrame·".format(page_count, len(df_tmp)))
                             loop_page = False
                         else:

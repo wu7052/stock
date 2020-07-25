@@ -73,6 +73,8 @@ class ws_rp():
         filename = output_path + today + "_" + filename + type
         if dd_df is None or dd_df.empty:
             wx.info("[output_file] Dataframe is empty")
+        elif sheet_name is None:
+            sheet_name = 'Noname'
         else:
             if type == '.xlsx':
                 dd_df.to_excel(filename,index=index, sheet_name= sheet_name, float_format="%.2f", encoding='utf_8_sig')

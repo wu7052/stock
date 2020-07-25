@@ -27,14 +27,14 @@ from functions import *
 =======
 # 从申银万国 更新 行业分类
 """
-# wx.info("============================[update_sh_basic_info_2]上证主板基础信息更新==========================================")
-# update_sh_basic_info_2()
-# wx.info("============================[update_sh_basic_info_kc]科创板基础信息更新==========================================")
-# update_sh_basic_info_kc()
-# wx.info("============================[update_sz_basic_info]深证主板、中小板、创业板基础信息更新==========================================")
-# update_sz_basic_info()
-# wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
-# update_sw_industry_into_basic_info()
+wx.info("============================[update_sh_basic_info_2]上证主板基础信息更新==========================================")
+update_sh_basic_info_2()
+wx.info("============================[update_sh_basic_info_kc]科创板基础信息更新==========================================")
+update_sh_basic_info_kc()
+wx.info("============================[update_sz_basic_info]深证主板、中小板、创业板基础信息更新==========================================")
+update_sz_basic_info()
+wx.info("============================[update_sw_industry_into_basic_info]申万行业信息更新==========================================")
+update_sw_industry_into_basic_info(start_from=None, start_code=None)
 
 
 """####################################################################
@@ -45,7 +45,7 @@ from functions import *
 wx.info("============================[update_daily_data_from_eastmoney]当日交易数据==========================================")
 update_daily_data_from_eastmoney(supplement=False)
 
-# 获得今日需要 前复权处理的 股票id，从 tushare 获得历史 240天的 前复权数据，更新 'qfq' 表
+# 常用功能，获得今日需要 前复权处理的 股票id，从 tushare 获得历史 240天的 前复权数据，更新 'qfq' 表
 wx.info("============================[update_last_day_qfq_data_from_ts]更新个股前复权数据==========================================")
 qfq_id_arr = update_last_day_qfq_data_from_ts()
 
@@ -59,7 +59,7 @@ qfq_id_arr = update_last_day_qfq_data_from_ts()
 # 从tushare 获取前一天的 交易数据, type = 'cq' 表示除权价格； type = 'qfq' 表示前复权价格
 # 同时更新  'cq' \ 'qfq' 两类表
 """
-# update_dd_by_id_from_ts(period = -1)
+# update_dd_by_id_from_ts(period = -14)
 
 """####################################################################
 # 从tushare 获取指定日期的 交易数据, type = 'cq' 表示除权价格； type = 'qfq' 表示前复权价格
@@ -67,6 +67,18 @@ qfq_id_arr = update_last_day_qfq_data_from_ts()
 """
 # update_dd_by_id_from_ts(period = -1)
 
+"""
+#  计算 收盘价的 移动均值（MA5,10,20,60） 及 指数移动均值（EMA)
+#  fresh = True 从过去 240个交易日 开始计算，并更新相关历史记录；在数据库初始化时使用
+#  fresh = False 增量更新，最近一个交易日的均值
+#  data_src='cq' 或 'qfq'，分别从除权表、前复权表 读取数据，并将结果计入不同的ma表格
+"""
+wx.info("============================[update_ind_ma_df]除权数据指标（增量更新）==========================================")
+update_ind_ma_df(fresh=False, data_src='cq')
+wx.info("============================[update_ind_ma_df]前复权数据指标（增量更新）==========================================")
+update_ind_ma_df(fresh=False, data_src='qfq')
+wx.info("============================[update_ind_ma_single]当日个股前复权数据指标（个股全部更新）==========================================")
+update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
 
 
 """####################################################################
@@ -104,18 +116,17 @@ update_dgj_trading_data_from_eastmoney(force= False)
 # >>>>>>> dev
 
 
+
+
+
 """
-#  计算 收盘价的 移动均值（MA5,10,20,60） 及 指数移动均值（EMA)
-#  fresh = True 从过去 240个交易日 开始计算，并更新相关历史记录；在数据库初始化时使用
-#  fresh = False 增量更新，最近一个交易日的均值
-#  data_src='cq' 或 'qfq'，分别从除权表、前复权表 读取数据，并将结果计入不同的ma表格
+# 更新上市公司的财务报表
+# update='all'/ 'current' 分别代表更新 所有季度的报表 、当前季度的报表
+# supplement = True / False 代表增量更新 、全部刷新
 """
-wx.info("============================[update_ind_ma_df]除权数据指标（增量更新）==========================================")
-update_ind_ma_df(fresh=False, data_src='cq')
-wx.info("============================[update_ind_ma_df]前复权数据指标（增量更新）==========================================")
-update_ind_ma_df(fresh=False, data_src='qfq')
-wx.info("============================[update_ind_ma_single]当日个股前复权数据指标（个股全部更新）==========================================")
-update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
+wx.info("============================[update_fin_report_from_eastmoney]公司财报数据=====================================")
+update_fin_report_from_eastmoney(update='all', supplement = True)
+
 
 
 """
@@ -124,7 +135,9 @@ update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
 """
 update_hot_industry(start_date='',end_date='')
 # analysis_hot_industry(duration = 5, level=1)
-analysis_hot_industry(duration = 5, level=2)
+# analysis_hot_industry(duration = 5, level=2)
+
+
 """
 #  根据规则筛选股票，PE、收盘价、流通金额、Ma55、高点左右侧得分、黄金比例、
 #  f_date='' 默认时间是最近交易日，或指定回测日期
@@ -148,7 +161,7 @@ analysis_hot_industry(duration = 5, level=2)
 
 
 """####################################################################
-# 从sina获得实时的交易数据
+# 从sina获得交易数据
 # 不指定日期，默认是当天
 # 指定日期，sina 的交易数据更新到 指定日期
 """

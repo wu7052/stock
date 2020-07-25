@@ -74,9 +74,9 @@ def str_decode(re_data = None, type = None):
     except Exception as error:
         wx.info('delete illegal string,try again...')
         # err_msg = str(error)
-        pos = re.findall(r'([\d]+)inposition([\d]+):illegal', str(error).replace(' ', ''))
+        pos = re.findall(r'position([\d]+):illegal', str(error).replace(' ', ''))
         if len(pos) == 1:
-            re_data = re_data[0:int(pos[0][1])] + re_data[int(pos[0][1])+1:]
+            re_data = re_data[0:int(pos[0])] + re_data[int(pos[0])+1:]
             re_data = str_decode(re_data, type)
             return re_data
     return re_data
