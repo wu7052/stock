@@ -21,10 +21,6 @@ from functions import *
 
 """####################################################################
 # 从上证、深证 网站更新 A 股基础信息
-<<<<<<< HEAD
-# update_sh_basic_info()
-# update_sz_basic_info()
-=======
 # 从申银万国 更新 行业分类
 """
 wx.info("============================[update_sh_basic_info_2]上证主板基础信息更新==========================================")
@@ -44,16 +40,16 @@ update_sw_industry_into_basic_info(start_from=None, start_code=None)
 # 常用功能，从 eastmoney 获得全部的 日交易数据，同时更新  'cq' \ 'qfq' 两类表
 wx.info("============================[update_daily_data_from_eastmoney]当日交易数据==========================================")
 update_daily_data_from_eastmoney(supplement=False)
+# 更新当前数据到 指定的日期
+# wx.info("============================[update_daily_data_from_eastmoney(date)]==========================================")
+# update_daily_data_from_eastmoney(date= '20200326',supplement=False)
 
 # 常用功能，获得今日需要 前复权处理的 股票id，从 tushare 获得历史 240天的 前复权数据，更新 'qfq' 表
 wx.info("============================[update_last_day_qfq_data_from_ts]更新个股前复权数据==========================================")
 qfq_id_arr = update_last_day_qfq_data_from_ts()
 
-# 更新当前数据到 指定的日期
-# wx.info("============================[update_daily_data_from_eastmoney(date)]==========================================")
-# update_daily_data_from_eastmoney(date= '20190606',supplement=False)
 
-# >>>>>>> dev
+
 
 """####################################################################
 # 从tushare 获取前一天的 交易数据, type = 'cq' 表示除权价格； type = 'qfq' 表示前复权价格
@@ -83,13 +79,6 @@ update_ind_ma_single(id_arr=qfq_id_arr, data_src='qfq')
 
 """####################################################################
 # 从 eastmoney 获得大宗交易数据
-<<<<<<< HEAD
-# 先检查数据库中大宗交易的最新日期，
-# 截止时间 是今天
-# update_whole_sales_data(force=False)
-# update_ws_share_holder()
-
-=======
 # update_whole_sales_data 先检查ws_201901大宗交易流水的最新日期，去掉最新的日期数据，因为最新日期的数据可能不完整
 # 截止时间 是今天； force = True 强制更新，删除旧数据
 # update_ws_share_holder 更新 share_holder 表的汇总数据
@@ -111,9 +100,8 @@ update_dgj_trading_data_from_eastmoney(force= False)
 # 001：预案 ； 002: 股东大会通过 ； 003：股东大会否决
 # 004：实施 ； 005：终止实施 ； 006： 实施完成
 """
-# wx.info("============================[update_repo_data_from_eastmoney]公司回购数据==========================================")
-# update_repo_data_from_eastmoney()
-# >>>>>>> dev
+wx.info("============================[update_repo_data_from_eastmoney]公司回购数据==========================================")
+update_repo_data_from_eastmoney_2()
 
 
 
@@ -125,11 +113,16 @@ update_dgj_trading_data_from_eastmoney(force= False)
 # supplement = True / False 代表增量更新 、全部刷新
 """
 wx.info("============================[update_fin_report_from_eastmoney]公司财报数据=====================================")
-update_fin_report_from_eastmoney(update='all', supplement = True)
-
-
+update_fin_report_from_eastmoney(update='current', supplement = True)
 
 """
+"""
+
+
+wx.info("============================[update_zhiya_from_eastmoney]股权抵押数据==========================================")
+update_zhiya_from_eastmoney(supplement= True)
+
+""" 
 # 最近五个交易日的 热点板块的统计图
 # X坐标日期、板块名，各板块的个股数量
 """

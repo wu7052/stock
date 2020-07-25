@@ -52,6 +52,8 @@ class ex_web_data(object):
 
             self.dd_hot_industry = self.h_conf.rd_opt('db', 'dd_hot_industry')
             self.fin_report = self.h_conf.rd_opt('db','fin_report')
+            self.dgj_table = self.h_conf.rd_opt('db','dgj_table')
+            self.dd_zhiya = self.h_conf.rd_opt('db','dd_zhiya')
 
         except Exception as e:
             raise e
@@ -410,7 +412,8 @@ class ex_web_data(object):
         price = jsonpath(json_obj, '$..PRICE')
         vol = jsonpath(json_obj, '$..TVOL')
         v_t = jsonpath(json_obj, '$..Cjeltszb')
-        vol_tf = [float(tmp) * 100 for tmp in v_t]  # 换算成百分比，交易量占流动股的百分比
+        # vol_tf = [float(tmp) * 100 for tmp in v_t]  # 换算成百分比，交易量占流动股的百分比
+        vol_tf = [0 if tmp == '-' else float(tmp)*100 for tmp in v_t]  # 换算成百分比，交易量占流动股的百分比
         amount = jsonpath(json_obj, '$..TVAL')
         b_code = jsonpath(json_obj, '$..BUYERCODE')
         s_code = jsonpath(json_obj, '$..SALESCODE')
@@ -612,12 +615,16 @@ class ex_web_data(object):
         self.db.handle.commit()
         return iCount
 
-    def dgj_fin_start_date(self, table_name=None, sql=None, format=10):
-        if sql is None: # dgj 查询
+    def get_start_date(self, src='', sql=None, format=10):
+        if src == 'dgj':    # dgj 查询
+            table_name = self.dgj_table
             sql = "select distinct date from " + table_name + " order by date desc limit 3"
-            dgj_flag = True
-        else: #fin_report 查询
-            dgj_flag = False
+        elif src == 'fin':  #fin_report 财报查询
+            table_name = self.fin_report
+        elif src == 'zhiya':  # zhiya 质押查询
+            table_name = self.dd_zhiya
+        else:
+            return None
 
         iCount = self.db.cursor.execute(sql)  # 返回值
         self.db.handle.commit()
@@ -627,11 +634,16 @@ class ex_web_data(object):
             # second_date = result[1][0]
             third_date = result[-1][0]
 
-            if dgj_flag:
+            if src == 'dgj':
                 # 数据保留到 third_date , 之后两天的数据都删除掉，并设置 start_date 为 third_date
                 sql = "delete from " + table_name + " where date > " + third_date
                 iCount = self.db.cursor.execute(sql)  # 返回值
                 self.db.handle.commit()
+            elif src == 'zhiya':
+                # 数据保留到 third_date , 之后两天的数据都删除掉，并设置 start_date 为 third_date
+                sql = "delete from " + table_name + " where notice_date > " + third_date
+                # iCount = self.db.cursor.execute(sql)  # 返回值
+                # self.db.handle.commit()
 
             start_date = datetime.strptime(third_date, "%Y%m%d")  # 日期字符串 '20190111' ,转换成 20190111 日期类型
             if format == 10:
@@ -655,30 +667,30 @@ class ex_web_data(object):
         if json_str is not None:
             json_obj = json.loads(json_str)
 
-        self.total_pages = json_obj['pages']
+        self.total_pages = json_obj['result']['pages']
 
-        if len(json_obj['data']) == 0:
+        if len(json_obj['result']['data']) == 0:
             return None
-        id = jsonpath(json_obj, '$..dim_scode')
-        name = jsonpath(json_obj, '$..securityshortname')
-        notice_date_stamp = jsonpath(json_obj, '$..updatedate')
-        notice_date = self._datestamp_to_srt(notice_date_stamp)
-        start_date_stamp = jsonpath(json_obj, '$..repurstartdate')
-        start_date = self._datestamp_to_srt(start_date_stamp)
-        end_date_stamp = jsonpath(json_obj, '$..repurenddate')
-        end_date = self._datestamp_to_srt(end_date_stamp)
+        id = jsonpath(json_obj, '$..data..dim_scode')
+        name = jsonpath(json_obj, '$..data..securityshortname')
+        notice_date = jsonpath(json_obj, '$..data..upd')
+        # notice_date = self._datestamp_to_srt(notice_date_stamp)
+        start_date = jsonpath(json_obj, '$..data..repurstartdate')
+        # start_date = self._datestamp_to_srt(start_date_stamp)
+        end_date = jsonpath(json_obj, '$..data..repurenddate')
+        # end_date = self._datestamp_to_srt(end_date_stamp)
         # progress = [float(tmp) * 100 for tmp in v_t]
-        progress = jsonpath(json_obj, '$..repurprogress')
-        plan_low_price = jsonpath(json_obj, '$..repurpricelower')
-        plan_high_price = jsonpath(json_obj, '$..repurpricecap')
-        plan_low_vol = jsonpath(json_obj, '$..repurnumlower')
-        plan_high_vol = jsonpath(json_obj, '$..repurnumcap')
+        progress = jsonpath(json_obj, '$..data..repurprogress')
+        plan_low_price = jsonpath(json_obj, '$..data..repurpricelower')
+        plan_high_price = jsonpath(json_obj, '$..data..repurpricecap')
+        plan_low_vol = jsonpath(json_obj, '$..data..repurnumlower')
+        plan_high_vol = jsonpath(json_obj, '$..data..repurnumcap')
         plan_low_amount = jsonpath(json_obj, '$..repuramountlower')
         plan_high_amount = jsonpath(json_obj, '$..repuramountlimit')
-        buy_in_low_price = jsonpath(json_obj, '$..repurpricelower1')
-        buy_in_high_price = jsonpath(json_obj, '$..repurpricecap1')
-        buy_in_vol = jsonpath(json_obj, '$..repurnum')
-        buy_in_amount = jsonpath(json_obj, '$..repuramount')
+        buy_in_low_price = jsonpath(json_obj, '$..data..zdj')
+        buy_in_high_price = jsonpath(json_obj, '$..data..zgj')
+        buy_in_vol = jsonpath(json_obj, '$..data..slsx')
+        buy_in_amount = jsonpath(json_obj, '$..data..jesx')
         repo_data = [id, name, notice_date, start_date, end_date, progress, plan_low_price, plan_high_price,
                      plan_low_vol, plan_high_vol, plan_low_amount, plan_high_amount,
                      buy_in_low_price, buy_in_high_price, buy_in_vol, buy_in_amount]
@@ -779,6 +791,65 @@ class ex_web_data(object):
             self.db.handle.commit()
 
 
+    def east_zhiya_json_parse(self, json_str=None):
+        if json_str is not None:
+            json_obj = json.loads(json_str)
+        if len(json_obj['data']) == 0:
+            return None
+        id = jsonpath(json_obj, '$..scode')
+        name = jsonpath(json_obj, '$..sname')
+        notice_date = jsonpath(json_obj, '$..upd')  # 公告日期
+        # notice_date = [re.sub(r'-', '', tmp[0:10]) for tmp in notice_date]
+        notice_date = [re.sub(r'-', '', tmp[0:10]) for tmp in notice_date]
+        shareholder = jsonpath(json_obj, '$..gdmc')  # 股东名称
+        shareholder = [tmp[0:20] for tmp in shareholder]
+        cashsupplier = jsonpath(json_obj, '$..jgmc') # 质押机构
+        cashsupplier = [tmp[0:20] for tmp in cashsupplier]
+        start_date = jsonpath(json_obj, '$..sdate')  # 开始质押日期
+        start_date = [re.sub(r'-', '', tmp[0:10]) for tmp in start_date]
+        end_date = jsonpath(json_obj, '$..enddate')  # 结束质押日期
+        end_date = [re.sub(r'-', '', tmp[0:10]) for tmp in end_date]
+        frozenshare = jsonpath(json_obj, '$..sharefrozennum')  # 质押股份数量 万股
+        frozen_pct = jsonpath(json_obj, '$..frozenratio')  # 质押股份 占 持有量的比例
+        frozen_pct_total = jsonpath(json_obj, '$..frozenintotal')  # 质押股份 占 总股本的比例
+        frozen_amount = jsonpath(json_obj, '$..sz')  # 质押股份市值 万元
+        pcx = jsonpath(json_obj, '$..pcx')  # 平仓线
+        yjx = jsonpath(json_obj, '$..yjx')  # 预警线
+
+        zhiya_data = [id, name, notice_date, shareholder, cashsupplier, start_date, end_date, pcx, yjx, frozenshare,
+                      frozen_pct, frozen_pct_total, frozen_amount]
+        df = pd.DataFrame(zhiya_data)
+        df1 = df.T
+        df1.rename(
+            columns={0: 'id', 1: 'name', 2:'notice_date',  3:'shareholder', 4: 'cashsupplier', 5:  'start_date',
+                     6:'end_date', 7: 'pcx',  8: 'yjx',9: 'frozenshare',  10:'frozen_pct',
+                     11: 'frozen_pct_total', 12: 'frozen_amount'}, inplace=True)
+
+        return df1
+
+
+
+    def db_load_into_zhiya_data(self, df_record=None):
+        wx = lg.get_handle()
+        t_name = self.dd_zhiya
+        if df_record is None or df_record.empty :
+            wx.info("[db_load_into_zhiya_data] 股权质押 DataFrame 为空")
+            return -1
+        dd_array = df_record.values.tolist()
+        i = 0
+        while i < len(dd_array):
+            dd_array[i] = tuple(dd_array[i])
+            i += 1
+        sql = "REPLACE INTO " + t_name + " SET id=%s, name=%s, notice_date=%s, shareholder=%s, cashsupplier=%s, " \
+                                         "start_date=%s, end_date=%s, pcx=%s, yjx=%s, frozenshare=%s, frozen_pct=%s, " \
+                                         "frozen_pct_total=%s, frozen_amount=%s"
+
+        i_scale = 1000
+        for i in range(0, len(dd_array), i_scale):
+            tmp_array = dd_array[i: i + i_scale]
+            wx.info("[db_load_into_zhiya_data][{}] Loaded {} ~ {} , total {} " .format(t_name, i, i + i_scale, len(dd_array)))
+            self.db.cursor.executemany(sql, tmp_array)
+            self.db.handle.commit()
 
     """
     sql = "select distinct b_code from ws_201901 where id = %s order by date asc"

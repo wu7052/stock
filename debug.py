@@ -17,48 +17,6 @@ from filter_package import filter_fix, filter_industry
 from assess_package import back_trader
 from functions import *
 
-# update_hot_industry(start_date='20191201',end_date='20191226')
-wx.info("============================[update_fin_report_from_eastmoney]公司财报数据=====================================")
-update_fin_report_from_eastmoney(update='current', supplement = False)
 
-
-
-
-"""
-# 更新上市公司的财务报表
-# update='all'/ 'current' 分别代表更新 所有季度的报表 、当前季度的报表
-# supplement = True / False 代表增量更新 、全部刷新
-"""
-# wx.info("============================[update_fin_report_from_eastmoney]公司财报数据=====================================")
-# update_fin_report_from_eastmoney(update='all', supplement = True)
-
-
-
-"""
-# 最近五个交易日的 热点板块的统计图
-# X坐标日期、板块名，各板块的个股数量
-"""
-# update_hot_industry(start_date='',end_date='')
-# analysis_hot_industry(duration = 5, level=1)
-# analysis_hot_industry(duration = 5, level=2)
-
-
-# update_fin_report_from_eastmoney(update='current', supplement = True)
-
-# f_industry = filter_industry( f_conf='filter_rules\\filter_001.conf', data_src='qfq', industry_name='计算机应用')
-# df_ma_up_grp = f_industry.filter_ma_up() # id, date, ma_5, ma_10, ma_20, ma_60
-# df_c_up_ma10_grp = f_industry.filter_c_up_ma10(df_grp = df_ma_up_grp) # id , date_x, ma_5, ma_10, ma_20, ma_60, data_y, close
-# df_ws_grp = f_industry.filter_ws_record(df_grp=df_c_up_ma10_grp, duration=-30) # id, ave_disc, max_disc, min_disc, t_amount, t_vol
-# print(df_ws_grp)
-
-# 財務報表作為 剔除條件
-# df_roe_ave = f_industry.filter_fin_roe_top()  # id, roe
-
-
-
-# analysis_hot_industry(duration = 5, level=1)
-# analysis_hot_industry(duration = 5, level=2)
-
-# update_dgj_trading_data_from_eastmoney(force= False)
-# update_whole_sales_data_from_eastmoney(force=False)
-
+wx.info("============================[update_zhiya_from_eastmoney]股权抵押数据==========================================")
+update_zhiya_from_eastmoney(supplement= True)
