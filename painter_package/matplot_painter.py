@@ -1,5 +1,5 @@
 from matplotlib import pyplot as plt
-from mpl_finance import candlestick_ohlc
+from mplfinance.original_flavor import candlestick_ohlc
 from matplotlib.pylab import date2num
 import matplotlib.dates as dates
 from matplotlib.ticker import Formatter

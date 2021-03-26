@@ -581,19 +581,105 @@ http://38.push2.eastmoney.com/api/qt/clist/get?cb=jQuery112409671694568323113_15
 def update_daily_data_from_eastmoney_2(date=None, supplement=False):
     wx = lg.get_handle()
     web_data = ex_web_data()
+    if date is None:
+        date = datetime.now().strftime('%Y%m%d')
+    page_src = (('60%', 'm:1+t:2', '上证 主板'), ('00%', 'm:0+t:6', '深证 主板'),('002%', 'm:0+t:13', '中小板'),
+                ('30%', 'm:0+t:80', '创业板'), ('68%', 'm:1+t:23', '科创板'))
 
-    page_src = (
-    ('68%', 'm:1+t:23', '科创板'), ('002%', 'm:0+t:13', '中小板'), ('60%', 'm:1+t:2', '上证 主板'), ('00%', '', '深证 主板'),
-    ('30%', 'm:0+t:80', '创业板'))
+    try:
+        for src in page_src:
+            # page_count = 1
+            # items_page = 500
+            # loop_page = True
+            # while loop_page:
 
-    pass
+            # np=2 设置后，一次性取出该版块的所有数据
+            east_daily_url = "http://14.push2.eastmoney.com/api/qt/clist/get?" \
+                             "cb=jQuery112401309587827468357_1605972394764&pn=1&pz=5000&po=1&np=2&" \
+                             "ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f3&" \
+                             "fs="+src[1]+"&fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20," \
+                                    "f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152&_=1605972394765"
 
+            east_daily_str = web_data.get_json_str(url=east_daily_url, web_flag='eastmoney')
+            east_daily_str = re.search(r'(?:jQuery\d+\_\d+\()(.*)', east_daily_str).group(1)[:-2]
+            dd_cq_df = web_data.east_dd_data_json_parse(date = date , json_str=east_daily_str)
+            dd_qfq_df = dd_cq_df.loc[:, ['id', 'date', 'open', 'high', 'low', 'close', 'pre_close',
+                                        'chg', 'pct_chg', 'vol', 'amount']]
+            web_data.db_load_into_daily_data(dd_df=dd_cq_df, pre_id=src[0], mode='full', type='cq')
+            web_data.db_load_into_daily_data(dd_df=dd_qfq_df, pre_id=src[0], mode='basic', type='qfq')
+
+
+    except Exception as e:
+        wx.info("Err [update_daily_data_from_eastmoney]: {}".format(e))
+
+"""
+                # 把字符串 拆分成 交易数据",,,,,",",,,,,",",,,,",",,,,,"  和 记录数量 两个部分
+                east_daily_str = 
+                daily_data = east_daily_str.group(1)  # 获得交易数据
+                total_item = int(east_daily_str.group(2))  # 获得股票总数量，用来计算 页数
+                total_page = int((total_item + items_page - 1) / items_page)  # 总页数，向上取整
+                wx.info("[update daily data from eastmoney] {}-- page {}/ {}".format(src[2], page_count, total_page))
+                page_count += 1
+                if page_count > total_page:
+                    loop_page = False
+
+                # 把交易数据 进一步拆分成 每支股票交易数据一条字符串 的数组
+                east_daily_data = re.findall(r'(?:\")(.*?)(?:\")', daily_data)
+                page_arr = list()
+                for daily_str in east_daily_data:
+                    daily_arr = daily_str.split(',')
+                    daily_arr.pop(0)  # 去掉 无意义的 第一个字段
+                    if src[0] == 'C._SZAME' and re.match(r'^002', daily_arr[0]) is not None:  # 深圳主板发现 中小板
+                        loop_page = False
+                        break
+                    else:
+                        page_arr.append(daily_arr)
+                        # wx.info("{}".format(daily_arr[0]))
+                page_full_df = pd.DataFrame(page_arr, columns=['id', 'name', 'close', 'chg', 'pct_chg', 'vol', 'amount',
+                                                               'pct_up_down',
+                                                               'high', 'low', 'open', 'pre_close', 'unknown1', 'qrr',
+                                                               'tor', 'pe', 'pb',
+                                                               'total_amount', 'total_flow_amount', 'unknown4',
+                                                               'unknown5',
+                                                               'unknown6', "unknown7", "date", "unknown8"])
+                if date is None:
+                    page_full_df['date'] = datetime.now().strftime('%Y%m%d')
+                else:
+                    page_full_df['date'] = date
+
+                if supplement:  # 只采集增补信息
+                    page_db_df = page_full_df.loc[:, ['id', 'date', 'qrr', 'tor', 'pct_up_down', 'pe', 'pb']]
+                else:  # 采集全部数据
+                    page_db_df = page_full_df.loc[:, ['id', 'date', 'open', 'high', 'low', 'close', 'pre_close', 'chg',
+                                                      'pct_chg', 'vol', 'amount', 'qrr', 'tor', 'pct_up_down', 'pe',
+                                                      'pb']]
+                    page_db_df['open'] = page_db_df['open'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['high'] = page_db_df['high'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['low'] = page_db_df['low'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['close'] = page_db_df['close'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pre_close'] = page_db_df['pre_close'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['chg'] = page_db_df['chg'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pct_chg'] = page_db_df['pct_chg'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['vol'] = page_db_df['vol'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['amount'] = page_db_df['amount'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['qrr'] = page_db_df['qrr'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['tor'] = page_db_df['tor'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pct_up_down'] = page_db_df['pct_up_down'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pe'] = page_db_df['pe'].apply(lambda x: '0' if str(x) == '-' else x)
+                    page_db_df['pb'] = page_db_df['pb'].apply(lambda x: '0' if str(x) == '-' else x)
+
+                    page_db_df['amount'] = pd.to_numeric(page_db_df['amount'])
+                    page_db_df['amount'] = page_db_df['amount'] / 1000
+
+                    page_db_df_qfq = page_db_df.loc[:, ['id', 'date', 'open', 'high', 'low', 'close', 'pre_close',
+                                                        'chg', 'pct_chg', 'vol', 'amount']]
+                    web_data.db_load_into_daily_data(dd_df=page_db_df, pre_id=src[1], mode='full', type='cq')
+                    web_data.db_load_into_daily_data(dd_df=page_db_df_qfq, pre_id=src[1], mode='basic', type='qfq')
+"""
 
 """
 # 从东财老接口获得 68/60/30/00/002 的日交易数据
 """
-
-
 @wx_timer
 def update_daily_data_from_eastmoney(date=None, supplement=False):
     wx = lg.get_handle()
@@ -601,6 +687,10 @@ def update_daily_data_from_eastmoney(date=None, supplement=False):
     page_src = (('C.23', '68%', '科创板'), ('C.13', '002%', '中小板'),
                 ('C.2', '60%', '上证 主板'), ('C._SZAME', '00%', '深证 主板'),
                 ('C.80', '30%', '创业板'))
+
+    if date is None:
+        date = datetime.now().strftime('%Y%m%d')
+
     try:
         for src in page_src:
             page_count = 1
@@ -1081,12 +1171,17 @@ def update_repo_data_from_eastmoney_2():
     loop_flag = True
     icounter = 0
     while loop_flag:
-        east_money_repo_url = "http://datacenter.eastmoney.com/api/data/get?type=RPTA_WEB_GETHGLIST&" \
-                              "sty=ALL&source=WEB&p="+ str(page_counter) +"&ps=100&st=upd&sr=-1&" \
-                                                                          "var=sWGWYDPB&rt=53034000"
+        # east_money_repo_url = "http://datacenter.eastmoney.com/api/data/get?type=RPTA_WEB_GETHGLIST&" \
+        #                       "sty=ALL&source=WEB&p="+ str(page_counter) +"&ps=100&st=upd&sr=-1&" \
+        #                                                                   "var=sWGWYDPB&rt=53034000"
+
+        east_money_repo_url = "http://datacenter.eastmoney.com/api/data/get?callback=" \
+                              "jQuery11230633586381441708_1606142536395&st=dim_date&sr=-1&ps=" \
+                              "200&p=" + str(page_counter)+"&type=RPTA_WEB_GETHGLIST&sty=ALL&source=WEB"
+
         repo_str = web_data.get_json_str(url=east_money_repo_url, web_flag='eastmoney')
-        trunc_pos = repo_str.find('{"result":')
-        repo_str = repo_str[trunc_pos:-1]
+        trunc_pos = repo_str.find('{"version":')
+        repo_str = repo_str[trunc_pos:-2]
         df_repo = web_data.east_repo_json_parse(repo_str)
         wx.info("[update_repo_data_from_eastmoney] Page {} / {} loaded，includeing {} rows".format(page_counter,
                                                                                                   web_data.total_pages,
@@ -1548,8 +1643,9 @@ def verify_trade_date(start_date=''):
 def update_fin_report_from_eastmoney(update='current', supplement = True):
     wx = lg.get_handle()
     web_data = ex_web_data()
-    report_date_arr = (('2020Q1','2020-03-31','2020一季度'), ('2019Q4','2019-12-31','2019四季度'),
-                        ('2019Q3','2019-09-30','2019三季度') #,
+    report_date_arr = (('2020Q3','2020-09-30','2020三季度'), ('2020Q2','2020-06-30','2020半年报'),
+                       ('2020Q1','2020-03-31','2020一季度'), ('2019Q4','2019-12-31','2019四季度'),
+                        ('2019Q3','2019-09-30','2019三季度') #,('2020Q4','2020-12-31','2020四季度'),
                         # ('2019Q2','2019-06-30','2019半年报'), ('2019Q1','2019-03-31','2019一季报'),
                         # ('2018Q4','2018-12-31','2018年报'),('2018Q3','2018-09-30','2018三季度'),
                         # ('2018Q2','2018-06-30','2018半年报'),('2018Q1','2018-03-31','2018一季度'),
@@ -1681,6 +1777,10 @@ def update_zhiya_from_eastmoney(supplement = True):
         start_date_str = web_data.get_start_date(src='zhiya', sql=sql, format=8)
         if start_date_str is None:
             wx.info("[update_zhiya_from_eastmoney] 股票质押数据库无记录, 需要将 Supplement 设置为False")
+    else:
+        sql = 'delete from stock.dd_zhiya'
+        web_data.db._exec_sql(sql = sql)
+        wx.info("[update_zhiya_from_eastmoney] 已清空质押数据")
 
     page_count = 1
     df_zhiya_record = pd.DataFrame()  # 保存期内 所有股票的 报表数据，最后一次性写入数据库
@@ -1688,7 +1788,7 @@ def update_zhiya_from_eastmoney(supplement = True):
     while loop_page:
         total_pages = 0
         zhiya_url = "http://dcfm.eastmoney.com/EM_MutiSvcExpandInterface/api/js/get?type=GDZY_LB&" \
-                   "token=70f12f2f4f091e459a279469fe49eca5&cmd=&st=ndate&sr=-1&p="+str(page_count)+"&ps=100&" \
+                   "token=70f12f2f4f091e459a279469fe49eca5&cmd=&st=ndate&sr=-1&p="+str(page_count)+"&ps=200&" \
                    "js=var%20iQprlwbx={pages:(tp),data:(x),font:(font)}&filter=(datatype=1)&rt=53162692"
 
         zhiya_str = web_data.get_json_str(url=zhiya_url, web_flag='eastmoney')

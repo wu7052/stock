@@ -1,6 +1,6 @@
 # from logger_package import myLogger
 from ex_data import ex_web_data
-
+import re
 import pandas as pd
 import json
 from jsonpath import jsonpath
@@ -18,8 +18,10 @@ class sz_web_data(ex_web_data):
         # self.logger.wt.info("start to parse BASIC INFO ...\n")
         if json_str is not None:
             json_obj = json.loads(json_str)
-            company_code = jsonpath(json_obj, '$..data..zqdm')  # 公司/A股代码
+            company_code = jsonpath(json_obj, '$..data..agdm')  # 公司/A股代码
             company_abbr = jsonpath(json_obj, '$..data..agjc')  # 公司/A股简称
+            company_abbr = [re.search(r'(?:<u>)(.*)(?:</u>)',name).group(1) for name in company_abbr ]
+
             ts = jsonpath(json_obj, "$..data..agzgb")  # A股总资本 , 单位 亿股
             total_shares = [float(amount)*10000 for amount in ts]  # 换算成 万股 单位
             tfs = jsonpath(json_obj, '$..data..agltgb')  # A股流动资本, 单位 亿股

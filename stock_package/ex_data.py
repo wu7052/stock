@@ -687,10 +687,10 @@ class ex_web_data(object):
         plan_high_vol = jsonpath(json_obj, '$..data..repurnumcap')
         plan_low_amount = jsonpath(json_obj, '$..repuramountlower')
         plan_high_amount = jsonpath(json_obj, '$..repuramountlimit')
-        buy_in_low_price = jsonpath(json_obj, '$..data..zdj')
-        buy_in_high_price = jsonpath(json_obj, '$..data..zgj')
-        buy_in_vol = jsonpath(json_obj, '$..data..slsx')
-        buy_in_amount = jsonpath(json_obj, '$..data..jesx')
+        buy_in_low_price = jsonpath(json_obj, '$..data..repurpricelower1')
+        buy_in_high_price = jsonpath(json_obj, '$..data..repurpricecap1')
+        buy_in_vol = jsonpath(json_obj, '$..data..repurnum')
+        buy_in_amount = jsonpath(json_obj, '$..data..repuramount')
         repo_data = [id, name, notice_date, start_date, end_date, progress, plan_low_price, plan_high_price,
                      plan_low_vol, plan_high_vol, plan_low_amount, plan_high_amount,
                      buy_in_low_price, buy_in_high_price, buy_in_vol, buy_in_amount]
@@ -728,6 +728,67 @@ class ex_web_data(object):
                                          "buy_in_price_low=%s, buy_in_price_high=%s, buy_in_vol=%s, buy_in_amount=%s"
         self.db.cursor.executemany(sql, repo_arr)
         self.db.handle.commit()
+
+
+    """
+    f1,f2 收盘价 ,f3 涨跌幅,f4 涨跌额,f5成交手,f6成交额,f7振幅,f8换手率,f9 市盈率动态,f10量比,f12代码,f13,f14名称,f15最高,f16最低,
+    f17开盘价,f18昨收盘,f20总市值,f21流通市值,f23市净率,f2460日涨跌幅,f25年初至今涨跌幅,f22涨速,f115分钟涨跌,
+    f62,f128,f136,f115,f152",
+    """
+    def east_dd_data_json_parse(self, date=None, json_str=None):
+        if json_str is not None:
+            json_obj = json.loads(json_str)
+        if len(json_obj['data']) == 0:
+            return None
+        if date is None:
+            return None
+        id = jsonpath(json_obj, '$..data..diff..f12')
+        open = jsonpath(json_obj, '$..data..diff..f17')
+        high = jsonpath(json_obj, '$..data..diff..f15')
+        low = jsonpath(json_obj, '$..data..diff..f16')
+        close = jsonpath(json_obj, '$..data..diff..f2')
+        pre_close = jsonpath(json_obj, '$..data..diff..f18')
+        chg = jsonpath(json_obj, '$..data..diff..f4')
+        pct_chg = jsonpath(json_obj, '$..data..diff..f3')
+        vol = jsonpath(json_obj, '$..data..diff..f5')
+        amount = jsonpath(json_obj, '$..data..diff..f6')
+        qrr = jsonpath(json_obj, '$..data..diff..f10')
+        tor = jsonpath(json_obj, '$..data..diff..f8')
+        pct_up_down = jsonpath(json_obj, '$..data..diff..f7')
+        pe = jsonpath(json_obj, '$..data..diff..f9')
+        pb = jsonpath(json_obj, '$..data..diff..f23')
+        dd_data = [id, open, high, low, close, pre_close, chg, pct_chg, vol, amount, qrr, tor, pct_up_down, pe, pb]
+        df = pd.DataFrame(dd_data)
+        df1 = df.T
+        df1.rename(
+            columns={0: 'id', 1: 'open', 2:'high',  3:'low', 4: 'close', 5:  'pre_close',
+                     6:'chg', 7: 'pct_chg',  8: 'vol',9: 'amount',  10:'qrr',
+                     11: 'tor', 12: 'pct_up_down', 13: 'pe', 14: 'pb'}, inplace=True)
+        col_name = df1.columns.tolist()  # 将数据框的列名全部提取出来存放在列表里
+        col_name.insert(1, 'date')
+        df1 = df1.reindex(columns=col_name)
+        df1['date'] = date
+        df1['open'] = df1['open'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['high'] = df1['high'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['low'] = df1['low'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['close'] = df1['close'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['pre_close'] = df1['pre_close'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['chg'] = df1['chg'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['pct_chg'] = df1['pct_chg'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['vol'] = df1['vol'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['amount'] = df1['amount'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['qrr'] = df1['qrr'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['tor'] = df1['tor'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['pct_up_down'] = df1['pct_up_down'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['pe'] = df1['pe'].apply(lambda x: '0' if str(x) == '-' else x)
+        df1['pb'] = df1['pb'].apply(lambda x: '0' if str(x) == '-' else x)
+
+        df1['amount'] = pd.to_numeric(df1['amount'])
+        df1['amount'] = df1['amount'] / 1000
+
+        return df1
+
+
 
     def east_fin_report_json_parse(self, json_str=None):
         if json_str is not None:

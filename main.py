@@ -39,7 +39,8 @@ update_sw_industry_into_basic_info(start_from=None, start_code=None)
 """
 # 常用功能，从 eastmoney 获得全部的 日交易数据，同时更新  'cq' \ 'qfq' 两类表
 wx.info("============================[update_daily_data_from_eastmoney]当日交易数据==========================================")
-update_daily_data_from_eastmoney(supplement=False)
+# update_daily_data_from_eastmoney(supplement=False)
+update_daily_data_from_eastmoney_2(date=None, supplement=False)
 # 更新当前数据到 指定的日期
 # wx.info("============================[update_daily_data_from_eastmoney(date)]==========================================")
 # update_daily_data_from_eastmoney(date= '20200326',supplement=False)
