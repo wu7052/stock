@@ -196,10 +196,3 @@ update_hot_industry(start_date='',end_date='')
 # 最近N天 个股成交量占比 =  累计成交量 / 流动股份
 # report_days_vol(rp=reporter, days=30)
 
-
-# 废弃函数
-# 大宗交易 董高监交易 交叉对比
-# report_cross_dgj_ws(rp=reporter, ws_days=180, dgj_days=180)
-
-# 股票回购
-# report_repo_completion_data(rp= reporter)
