@@ -62,7 +62,7 @@ six==1.11.0
 sklearn==0.0
 soupsieve==2.0.1
 tushare==1.2.35
-urllib3==1.23
+urllib3==1.26.5
 w3lib==1.19.0
 websocket-client==0.57.0
 wrapt==1.10.11
